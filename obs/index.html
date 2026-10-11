@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex,nofollow">
+<title>Malta observations</title>
+<style>
+  :root {
+    --bg:#0f1216;--panel:#171b21;--raised:#1c222a;--border:#29313b;
+    --text:#e8eaee;--muted:#a2aab8;--faint:#78818f;--accent:#6fb1f0;
+    --sea-a:#263b49;--sea-b:#14232e;--land:rgba(152,178,190,.25);
+    --coast:rgba(247,251,253,.87);--label:rgba(239,245,246,.82);
+    --halo:rgba(26,34,37,.88);--popup:rgba(17,23,30,.97);color-scheme:dark;
+  }
+  :root[data-theme="light"] {
+    --bg:#f4f6f8;--panel:#fff;--raised:#f8fafb;--border:#cfd8dc;
+    --text:#102027;--muted:#546e7a;--faint:#71828c;--accent:#0d47a1;
+    --sea-a:#dae5e8;--sea-b:#c7d7dc;--land:rgba(247,249,246,.84);
+    --coast:rgba(26,54,67,.72);--label:rgba(40,56,62,.86);
+    --halo:rgba(242,243,237,.92);--popup:rgba(255,255,255,.98);color-scheme:light;
+  }
+  *{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--text);
+    font:14px ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+  body{min-height:100vh}header{background:var(--panel);border-bottom:1px solid var(--border);padding:8px 14px}
+  .bar{display:flex;align-items:center;gap:10px;max-width:940px;margin:auto}.spacer{flex:1}
+  h1{font-size:16px;margin:0}h1 small{color:var(--muted);font-size:11px;font-weight:400;margin-left:8px}
+  button,a{font:inherit}.theme{border:1px solid var(--border);border-radius:4px;background:var(--panel);color:var(--text);padding:4px 8px;cursor:pointer}
+  main{max-width:940px;margin:auto;padding:9px 10px 12px}.controls{display:flex;align-items:center;gap:6px 12px;flex-wrap:wrap;
+    background:var(--panel);border:1px solid var(--border);border-radius:6px;padding:7px 9px;margin-bottom:8px}
+  .group{display:flex;align-items:center;gap:5px}.label{font-size:9px;text-transform:uppercase;letter-spacing:.09em;color:var(--faint)}
+  .modes{display:flex;gap:3px;flex-wrap:wrap}.modes button{border:1px solid var(--border);border-radius:4px;background:var(--panel);color:var(--text);font-size:11px;padding:4px 8px;cursor:pointer}
+  .modes button[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:#fff}
+  .terrain{font-size:11px;display:flex;align-items:center;gap:5px}.terrain input{accent-color:var(--accent)}
+  figure{margin:0;background:var(--panel);border:1px solid var(--border);border-radius:6px;overflow:visible}
+  .timebar{display:flex;align-items:baseline;gap:5px 12px;flex-wrap:wrap;padding:8px 12px;border-bottom:1px solid var(--border)}
+  .time{font-size:21px;font-weight:680;font-variant-numeric:tabular-nums}.detail{font-size:11px;color:var(--muted)}
+  .age{font-size:10px;color:var(--faint);margin-left:auto}.age.stale{color:#e0ad62}
+  .stage{aspect-ratio:1.0977/1;position:relative;overflow:hidden;background:#152630;isolation:isolate;touch-action:manipulation}
+  .stage canvas{position:absolute;inset:0;width:100%;height:100%;display:block}.markers{position:absolute;inset:0;z-index:2}
+  .marker{position:absolute;left:0;top:0;width:38px;height:38px;transform:translate(-50%,-50%);border:0;background:transparent;padding:0;cursor:pointer;z-index:2}
+  .marker .disc{position:absolute;left:50%;top:50%;width:25px;height:25px;transform:translate(-50%,-50%);display:grid;place-items:center;
+    border:1px solid rgba(5,28,39,.88);border-radius:50%;background:var(--marker,#e8f5fb);color:#092b3a;box-shadow:0 1px 5px rgba(0,0,0,.45);
+    font-size:7.5px;font-weight:760;line-height:1;font-variant-numeric:tabular-nums;transition:transform .12s}
+  .marker .wind{position:absolute;left:50%;top:50%;width:34px;height:34px;transform:translate(-50%,-50%) rotate(var(--wind,0deg));pointer-events:none}
+  .marker .wind::before{content:"";position:absolute;left:15px;top:-1px;border-left:2.5px solid transparent;border-right:2.5px solid transparent;border-bottom:7px solid #fff;filter:drop-shadow(0 0 1px #102027)}
+  .marker.no-wind .wind{display:none}
+  .marker.offline .disc{background:#7d8791;color:#fff;border-style:dashed}.marker:hover,.marker:focus-visible,.marker[aria-expanded="true"]{z-index:8}
+  .marker:hover .disc,.marker:focus-visible .disc,.marker[aria-expanded="true"] .disc{transform:translate(-50%,-50%) scale(1.18)}
+  .popup{display:none;position:absolute;z-index:7;width:330px;max-width:calc(100% - 16px);padding:10px;background:var(--popup);border:1px solid var(--border);
+    border-radius:7px;box-shadow:0 12px 30px rgba(0,0,0,.36);pointer-events:none}.popup.visible{display:block}
+  .pop-head{display:flex;gap:10px}.pop-title{font-weight:680;font-size:13px}.pop-id{color:var(--faint);font-size:9.5px;margin-top:2px}
+  .pop-total{margin-left:auto;text-align:right;font-size:19px;font-weight:720;color:#66ccef;white-space:nowrap}.pop-total small{display:block;font-size:8px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+  .live-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;margin:8px 0}.live{background:var(--raised);border:1px solid var(--border);border-radius:4px;padding:5px 6px}
+  .live span{display:block;color:var(--faint);font-size:8px;text-transform:uppercase;letter-spacing:.06em}.live b{font-size:11px;font-variant-numeric:tabular-nums}
+  .pop-meta{font-size:9.5px;color:var(--muted);line-height:1.35;margin:5px 0}.rain-chart{display:block;width:100%;height:auto;background:rgba(124,145,157,.08);border-radius:4px}
+  .source-link{pointer-events:auto;color:var(--accent);text-decoration:none}.infobar{display:flex;align-items:center;gap:8px 16px;flex-wrap:wrap;border-top:1px solid var(--border);padding:7px 11px}
+  .key{font-size:10.5px;color:var(--muted)}.key strong{color:var(--text)}.stats{display:flex;gap:14px;margin-left:auto;font-size:10.5px;color:var(--muted);font-variant-numeric:tabular-nums}.stats b{color:var(--text)}
+  .desc{color:var(--muted);font-size:11px;line-height:1.45;margin:7px 2px 0}.desc strong{color:var(--text)}
+  .status{position:absolute;left:9px;top:9px;z-index:4;border:1px solid rgba(190,210,222,.3);border-radius:99px;background:rgba(14,22,29,.78);color:#e4edf3;font-size:10px;padding:4px 7px}.status.ready{display:none}.status.error{color:#ffc3bc;border-color:#b3483b}
+  body.embed header{display:none}body.embed main{padding-top:0}body.embed .desc{padding-bottom:2px}
+  @media(max-width:700px){main{padding:7px 7px 10px}.controls{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}.controls::-webkit-scrollbar{display:none;width:0;height:0}.group{flex:0 0 auto}.time{font-size:18px}.age{width:100%;margin-left:0}.stage{aspect-ratio:1.0977/1}.stats{margin-left:0}.popup{width:min(330px,calc(100% - 12px))}.live-grid{grid-template-columns:repeat(2,1fr)}}
+</style>
+</head>
+<body>
+<header><div class="bar"><h1>Malta Obs <small>Weather Underground PWS</small></h1><span class="spacer"></span><button class="theme" id="theme" aria-label="Switch colour theme">◐</button></div></header>
+<main>
+  <div class="controls" aria-label="Observation controls">
+    <div class="group"><span class="label">Markers</span><div class="modes" id="modes">
+      <button data-mode="temp" aria-pressed="true">Temperature</button><button data-mode="wind" aria-pressed="false">Wind</button>
+      <button data-mode="rate" aria-pressed="false">Rain now</button><button data-mode="today" aria-pressed="false">Rain today</button>
+      <button data-mode="period" aria-pressed="false">Since 1 Sep</button>
+    </div></div>
+    <span class="spacer"></span>
+    <label class="terrain"><input id="terrain" type="checkbox" checked>Topography + contours</label>
+  </div>
+  <figure>
+    <div class="timebar"><span class="time" id="time">Malta live observations</span><span class="detail" id="detail">Loading WU stations…</span><span class="age" id="age">—</span></div>
+    <div class="stage" id="stage"><canvas id="map"></canvas><div class="markers" id="markers"></div><div class="popup" id="popup"></div><span class="status" id="status">Loading stations…</span></div>
+    <div class="infobar"><span class="key" id="key">Fixed marker size · <strong>value at station</strong> · arrow points where wind is going</span><div class="stats"><span>Live <b id="live">—</b></span><span>Complete <b id="complete">—</b></span><span>Mean since 1 Sep <b id="mean">—</b></span></div></div>
+  </figure>
+  <p class="desc"><strong>Observed Weather Underground personal weather stations, not a forecast.</strong> Only stations reporting temperature, wind speed, rain rate and today's rain within the last 30 minutes appear. The snapshot is rebuilt server-side every five minutes. Hover, focus, or tap a marker for the daily rain chart. Missing station-days remain gaps and are never changed to zero.</p>
+</main>
+<script>
+"use strict";
+if(new URLSearchParams(location.search).has("embed"))document.body.classList.add("embed");
+const DATA_URL="data.json",MAP_URL="map.json",EXT={west:14.18,east:14.58,south:35.80,north:36.095},RAD=Math.PI/180;
+const $=id=>document.getElementById(id);const S={data:null,map:null,terrain:true,mode:"temp",w:0,h:0,dpr:1,popup:null,pinned:false,close:null};
+function finite(v){if(v===null||v===undefined||v==="")return null;const n=Number(v);return Number.isFinite(n)?n:null}function esc(s){return String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c])}
+function fmt(v,d=1){return Number.isFinite(v)?v.toFixed(d).replace(/\.0$/,""):"—"}function mm(v){return Number.isFinite(v)?fmt(v,v<10?1:0)+" mm":"—"}
+function compass(v){if(!Number.isFinite(v))return "—";return ["N","NE","E","SE","S","SW","W","NW"][Math.round(v/45)%8]}
+function project(w,h){const merc=y=>Math.log(Math.tan(Math.PI/4+y*RAD/2));const a=merc(EXT.south),b=merc(EXT.north);return{X:x=>(x-EXT.west)/(EXT.east-EXT.west)*w,Y:y=>(b-merc(y))/(b-a)*h}}
+function normalMap(raw){return raw&&raw.bounds&&raw.coastline&&Array.isArray(raw.coastline.land)&&raw.terrain&&Array.isArray(raw.terrain.elevation_m)?raw:null}
+function trace(c,X,Y){if(!S.map)return;for(const ring of S.map.coastline.land){if(!Array.isArray(ring)||!ring.length)continue;c.moveTo(X(ring[0][0]),Y(ring[0][1]));for(let i=1;i<ring.length;i++)c.lineTo(X(ring[i][0]),Y(ring[i][1]));c.closePath()}}
+function terrainRaster(){if(S.raster)return S.raster;const t=S.map.terrain,c=document.createElement("canvas");c.width=t.width;c.height=t.height;const x=c.getContext("2d"),im=x.createImageData(t.width,t.height),v=t.elevation_m,max=Math.max(1,t.max_m||250),light=document.documentElement.dataset.theme==="light";
+  const lo=light?[226,228,220]:[82,96,98],hi=light?[187,180,164]:[134,127,114],dx=(EXT.east-EXT.west)*111320*Math.cos(35.95*RAD)/(t.width-1),dy=(EXT.north-EXT.south)*111320/(t.height-1),at=(i,j)=>v[Math.max(0,Math.min(t.height-1,j))*t.width+Math.max(0,Math.min(t.width-1,i))];
+  for(let j=0;j<t.height;j++)for(let i=0;i<t.width;i++){const e=Math.max(0,at(i,j)),band=Math.pow(Math.min(1,e/max),.72),zx=(at(i+1,j)-at(i-1,j))/(2*dx),zy=(at(i,j+1)-at(i,j-1))/(2*dy),illum=Math.max(0,Math.min(1,(.5*zx+.5*zy+.707)/Math.sqrt(zx*zx+zy*zy+1))),shade=.66+illum*.42,k=(j*t.width+i)*4;for(let q=0;q<3;q++)im.data[k+q]=Math.max(0,Math.min(255,Math.round((lo[q]+(hi[q]-lo[q])*band)*shade)));im.data[k+3]=255}x.putImageData(im,0,0);S.raster=c;return c}
+function contours(){if(S.contours)return S.contours;const t=S.map.terrain,v=t.elevation_m,at=(x,y)=>v[y*t.width+x],all=[];for(let level=25;level<=225;level+=25){const seg=[];for(let y=0;y<t.height-1;y++)for(let x=0;x<t.width-1;x++){const z=[at(x,y),at(x+1,y),at(x+1,y+1),at(x,y+1)],p=[],cross=(a,b,x1,y1,x2,y2)=>{if((a<level&&b>=level)||(b<level&&a>=level)){const f=(level-a)/(b-a);p.push([x1+(x2-x1)*f,y1+(y2-y1)*f])}};cross(z[0],z[1],x,y,x+1,y);cross(z[1],z[2],x+1,y,x+1,y+1);cross(z[2],z[3],x+1,y+1,x,y+1);cross(z[3],z[0],x,y+1,x,y);if(p.length===2)seg.push([p[0],p[1]]);else if(p.length===4)seg.push([p[0],p[1]],[p[2],p[3]])}all.push({level,seg})}return S.contours=all}
+function draw(){if(!S.w||!S.map)return;const cv=$("map"),c=cv.getContext("2d"),css=getComputedStyle(document.documentElement),{X,Y}=project(S.w,S.h);c.setTransform(S.dpr,0,0,S.dpr,0,0);c.clearRect(0,0,S.w,S.h);const sea=c.createLinearGradient(0,0,S.w,S.h);sea.addColorStop(0,css.getPropertyValue("--sea-a"));sea.addColorStop(1,css.getPropertyValue("--sea-b"));c.fillStyle=sea;c.fillRect(0,0,S.w,S.h);c.beginPath();trace(c,X,Y);c.fillStyle=css.getPropertyValue("--land");c.fill("evenodd");
+  if(S.terrain){const b=S.map.bounds,t=S.map.terrain;c.save();c.beginPath();trace(c,X,Y);c.clip("evenodd");c.globalAlpha=.92;c.imageSmoothingQuality="high";c.drawImage(terrainRaster(),X(b.west),Y(b.north),X(b.east)-X(b.west),Y(b.south)-Y(b.north));c.globalAlpha=1;const lon=g=>b.west+g/(t.width-1)*(b.east-b.west),lat=g=>b.north-g/(t.height-1)*(b.north-b.south),light=document.documentElement.dataset.theme==="light";for(const line of contours()){c.beginPath();for(const q of line.seg){c.moveTo(X(lon(q[0][0])),Y(lat(q[0][1])));c.lineTo(X(lon(q[1][0])),Y(lat(q[1][1])))}const major=line.level%100===0;c.strokeStyle=light?(major?"rgba(83,76,65,.32)":"rgba(83,76,65,.19)"):(major?"rgba(245,241,230,.27)":"rgba(245,241,230,.15)");c.lineWidth=major?.72:.42;c.stroke()}c.restore()}
+  c.beginPath();trace(c,X,Y);c.strokeStyle="rgba(7,25,33,.28)";c.lineWidth=3.4;c.lineJoin="round";c.stroke();c.beginPath();trace(c,X,Y);c.strokeStyle=css.getPropertyValue("--coast");c.lineWidth=1.15;c.stroke();c.font="11px ui-sans-serif,system-ui,sans-serif";c.textAlign="center";c.textBaseline="middle";c.fillStyle=css.getPropertyValue("--label");c.strokeStyle=css.getPropertyValue("--halo");c.lineWidth=3;for(const city of S.map.coastline.cities||[]){if(city.lon<EXT.west||city.lon>EXT.east||city.lat<EXT.south||city.lat>EXT.north)continue;const x=X(city.lon),y=Y(city.lat);c.beginPath();c.arc(x,y,1.7,0,7);c.fill();c.strokeText(city.name,x,y-9);c.fillText(city.name,x,y-9)}}
+function resize(){const r=$("stage").getBoundingClientRect(),cv=$("map");S.w=Math.max(1,Math.round(r.width));S.h=Math.max(1,Math.round(r.height));S.dpr=Math.min(3,devicePixelRatio||1);cv.width=Math.round(S.w*S.dpr);cv.height=Math.round(S.h*S.dpr);draw();place();if(S.popup)position(S.popup.marker)}
+function value(st){const c=st.current||{};if(S.mode==="temp")return Number.isFinite(c.temp_c)?fmt(c.temp_c)+"°":"—";if(S.mode==="wind")return Number.isFinite(c.wind_kph)?fmt(c.wind_kph,0):"—";if(S.mode==="rate")return Number.isFinite(c.rain_rate_mm_h)?fmt(c.rain_rate_mm_h):"—";if(S.mode==="today")return Number.isFinite(st.rain_today_mm)?fmt(st.rain_today_mm):"—";return Number.isFinite(st.accumulated_mm)?fmt(st.accumulated_mm,0):"—"}
+function markerColour(st){const c=st.current||{},v=S.mode==="temp"?c.temp_c:S.mode==="wind"?c.wind_kph:S.mode==="rate"?c.rain_rate_mm_h:S.mode==="today"?st.rain_today_mm:st.accumulated_mm;if(!Number.isFinite(v))return "#7d8791";if(S.mode==="temp")return v<20?"#8fd3ff":v<27?"#a8e5c0":v<33?"#ffd270":"#f28b71";if(S.mode==="wind")return v<10?"#d8edf2":v<25?"#8bd2df":v<45?"#56a7d8":"#9f83d9";return v<=0?"#eaf4f7":v<2?"#b9e6f5":v<10?"#69c6ed":v<30?"#308fd4":"#7967c5"}
+function place(){if(!S.w)return;const {X,Y}=project(S.w,S.h);for(const m of $("markers").children){const st=S.data.stations[Number(m.dataset.i)];m.style.left=X(st.lon)+"px";m.style.top=Y(st.lat)+"px"}}
+function render(){const box=$("markers");box.replaceChildren();for(const [i,st] of S.data.stations.entries()){if(!st.current||st.lon<EXT.west||st.lon>EXT.east||st.lat<EXT.south||st.lat>EXT.north)continue;const m=document.createElement("button"),deg=finite(st.current.wind_deg);m.type="button";m.className="marker"+(Number.isFinite(deg)?"":" no-wind");m.dataset.i=i;m.style.setProperty("--marker",markerColour(st));m.style.setProperty("--wind",(Number.isFinite(deg)?deg+180:0)+"deg");m.setAttribute("aria-label",st.name+", "+value(st));m.setAttribute("aria-expanded","false");m.innerHTML='<span class="wind"></span><span class="disc">'+esc(value(st))+'</span>';m.addEventListener("mouseenter",()=>show(st,m,false));m.addEventListener("mouseleave",()=>{if(!S.pinned)S.close=setTimeout(hide,180)});m.addEventListener("focus",()=>show(st,m,false));m.addEventListener("blur",()=>{if(!S.pinned)S.close=setTimeout(hide,180)});m.addEventListener("click",e=>{e.stopPropagation();if(S.popup&&S.popup.station===st&&S.pinned)hide();else show(st,m,true)});box.append(m)}place();setKey()}
+function chart(st){const days=st.daily||[],vals=days.map(d=>finite(d.mm)).filter(Number.isFinite),max=Math.max(1,...vals),W=306,H=116,L=7,T=14,B=20,c="#58bfe8",slot=(W-2*L)/Math.max(1,days.length),bw=Math.max(1,Math.min(10,slot*.64));let bars='<line x1="'+L+'" y1="'+(H-B)+'" x2="'+(W-L)+'" y2="'+(H-B)+'" stroke="currentColor" stroke-opacity=".28"/>';
+  days.forEach((d,i)=>{const v=finite(d.mm),x=L+i*slot+(slot-bw)/2;if(v===null)bars+='<line x1="'+x+'" y1="'+(H-B+2)+'" x2="'+(x+bw)+'" y2="'+(H-B+2)+'" stroke="currentColor" stroke-opacity=".3"/>';else{const h=v===0?1:Math.max(1,v/max*(H-T-B));bars+='<rect x="'+x.toFixed(1)+'" y="'+(H-B-h).toFixed(1)+'" width="'+bw.toFixed(1)+'" height="'+h.toFixed(1)+'" rx="1" fill="'+c+'"><title>'+esc(d.date)+': '+mm(v)+'</title></rect>'}if((i%5===0)||i===days.length-1)bars+='<text x="'+(x+bw/2).toFixed(1)+'" y="'+(H-6)+'" text-anchor="middle" font-size="8" fill="currentColor" opacity=".68">'+esc(String(Number(d.date.slice(-2))))+'</text>'});return '<svg class="rain-chart" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Daily rainfall for '+esc(st.name)+'"><text x="7" y="10" font-size="8" fill="currentColor" opacity=".7">daily rain · '+mm(max)+' max</text>'+bars+'</svg>'}
+function live(label,v){return '<div class="live"><span>'+label+'</span><b>'+v+'</b></div>'}
+function show(st,marker,pin){clearTimeout(S.close);S.pinned=pin;const c=st.current||{},seen=c.observed_at?new Date(c.observed_at):null,wind=Number.isFinite(c.wind_kph)?fmt(c.wind_kph,0)+' km/h '+compass(c.wind_deg):'—',gust=Number.isFinite(c.gust_kph)?fmt(c.gust_kph,0)+' km/h':'—';$("popup").innerHTML='<div class="pop-head"><div><div class="pop-title">'+esc(st.name)+'</div><div class="pop-id">'+esc(st.id)+' · Weather Underground PWS</div></div><div class="pop-total">'+mm(st.accumulated_mm)+'<small>since 1 Sep</small></div></div><div class="live-grid">'+live('Temperature',Number.isFinite(c.temp_c)?fmt(c.temp_c)+' °C':'—')+live('Wind',wind)+live('Gust',gust)+live('Rain rate',Number.isFinite(c.rain_rate_mm_h)?fmt(c.rain_rate_mm_h)+' mm/h':'—')+live('Rain today',mm(st.rain_today_mm))+live('Humidity',Number.isFinite(c.humidity_pct)?fmt(c.humidity_pct,0)+'%':'—')+'</div><p class="pop-meta">Observed '+(seen?seen.toLocaleString('en-GB',{timeZone:'Europe/Malta',weekday:'short',hour:'2-digit',minute:'2-digit'}):'time unavailable')+' · '+st.days_reported+' of '+st.days_expected+' local days retained · <a class="source-link" href="'+esc(st.source_url)+'" target="_blank" rel="noopener">station page</a></p>'+chart(st);$("popup").classList.add("visible");if(S.popup&&S.popup.marker!==marker)S.popup.marker.setAttribute("aria-expanded","false");marker.setAttribute("aria-expanded","true");S.popup={station:st,marker};position(marker)}
+function position(marker){const p=$("popup"),x=Number.parseFloat(marker.style.left),y=Number.parseFloat(marker.style.top),pw=p.offsetWidth,ph=p.offsetHeight,margin=8;let left=x+18,top=y-ph/2;if(left+pw>S.w-margin)left=x-18-pw;if(left<margin)left=margin;if(top<margin)top=margin;if(top+ph>S.h-margin)top=S.h-ph-margin;p.style.left=left+'px';p.style.top=top+'px'}
+function hide(){if(S.popup)S.popup.marker.setAttribute("aria-expanded","false");S.popup=null;S.pinned=false;$("popup").classList.remove("visible")}
+function setKey(){const labels={temp:'Temperature · °C',wind:'Wind speed · km/h',rate:'Current rain rate · mm/h',today:'Rain today · mm',period:'Accumulated since 1 Sep 2026 · mm'};$("key").innerHTML='Fixed marker size · <strong>'+labels[S.mode]+'</strong> · arrow points where wind is going'}
+function meta(){const d=S.data,at=new Date(d.generated_at),age=Math.max(0,(Date.now()-at)/1000),label=age<90?'updated just now':age<3600?'updated '+Math.round(age/60)+' min ago':'updated '+Math.round(age/3600)+' h ago';$("time").textContent=at.toLocaleTimeString('en-GB',{timeZone:'Europe/Malta',hour:'2-digit',minute:'2-digit'});$("detail").textContent=at.toLocaleDateString('en-GB',{timeZone:'Europe/Malta',weekday:'short',day:'numeric',month:'short'})+' · Weather Underground PWS snapshot';$("age").textContent=label+' · auto-refresh 5 min';$("age").classList.toggle('stale',age>900);$("live").textContent=d.live_station_count;$("complete").textContent=d.complete_station_count;$("mean").textContent=mm(finite(d.mean_accumulated_mm))}
+async function load(force=false){$("status").className='status';$("status").textContent='Updating WU stations…';try{const u=DATA_URL+(force?'?t='+Date.now():'?v='+Math.floor(Date.now()/300000)),r=await fetch(u,{cache:'no-store'});if(!r.ok)throw Error('HTTP '+r.status);const d=await r.json();if(!d||d.provider!=="Weather Underground PWS"||!Array.isArray(d.stations))throw Error('invalid snapshot');S.data=d;meta();render();$("status").className='status ready'}catch(e){console.error(e);$("status").className='status error';$("status").textContent='Observation snapshot unavailable'}}
+$("modes").onclick=e=>{const b=e.target.closest('button[data-mode]');if(!b)return;S.mode=b.dataset.mode;for(const q of $("modes").children)q.setAttribute('aria-pressed',String(q===b));hide();render()};
+$("terrain").onchange=e=>{S.terrain=e.target.checked;draw()};$("theme").onclick=()=>{document.documentElement.dataset.theme=document.documentElement.dataset.theme==='light'?'':'light';S.raster=null;draw()};$("stage").onclick=e=>{if(!e.target.closest('.marker'))hide()};
+window.addEventListener('resize',resize);new ResizeObserver(resize).observe($("stage"));
+Promise.all([fetch(MAP_URL).then(r=>r.json()).then(x=>S.map=normalMap(x)),load()]).then(()=>resize()).catch(console.error);setInterval(()=>load(true),300000);setInterval(()=>{if(S.data)meta()},30000);
+</script>
+</body>
+</html>
