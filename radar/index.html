@@ -1,0 +1,1649 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<title>Malta radar · Ryan Vella</title>
+<style>
+  :root {
+    --bg: #0f1216;
+    --panel: #171b21;
+    --border: #262c35;
+    --text: #e8eaee;
+    --muted: #a2aab8;
+    --faint: #78818f;
+    --accent: #6fb1f0;
+    --accent-soft: #1b2b3d;
+    color-scheme: dark;
+  }
+  :root[data-theme="light"] {
+    --bg: #f4f6f8;
+    --panel: #fff;
+    --border: #cfd8dc;
+    --text: #102027;
+    --muted: #546e7a;
+    --faint: #8b9ba5;
+    --accent: #0d47a1;
+    --accent-soft: #e3ecf7;
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-height: 100vh; overflow-x: hidden; background: var(--bg); color: var(--text);
+    font: 14px ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  header { background: var(--panel); border-bottom: 1px solid var(--border); padding: 8px 20px; }
+  .bar { display: flex; align-items: center; gap: 12px; max-width: 1320px; margin: 0 auto; }
+  h1 { margin: 0; font-size: 17px; letter-spacing: .01em; }
+  h1 small { margin-left: 10px; color: var(--muted); font-size: 12px; font-weight: 400; }
+  .spacer { flex: 1; }
+  main { max-width: 1320px; margin: 0 auto; padding: 10px 20px 18px; }
+  button {
+    border: 1px solid var(--border); border-radius: 4px; background: var(--panel); color: var(--text);
+    cursor: pointer; font: inherit; font-size: 11.5px; padding: 4px 9px;
+    transition: background .12s, border-color .12s, color .12s;
+  }
+  button:hover:not(:disabled) { background: var(--accent-soft); }
+  button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: #fff; }
+  button:disabled { cursor: not-allowed; opacity: .45; }
+  .rainfall-link {
+    border: 1px solid var(--border); border-radius: 4px; color: var(--text); font-size: 11.5px;
+    padding: 4px 9px; text-decoration: none;
+  }
+  .rainfall-link:hover, .rainfall-link:focus-visible { background: var(--accent-soft); }
+  #theme { padding: 5px 8px; }
+  .panel-width { width: min(100%, 942px); margin-left: auto; margin-right: auto; }
+  .local-banner {
+    margin-top: 0; margin-bottom: 8px; border: 1px solid #725c2a; border-radius: 6px;
+    background: #352d1d; color: #f6d58b; padding: 8px 11px; font-size: 12px; line-height: 1.45;
+  }
+  :root[data-theme="light"] .local-banner { background: #fff7df; color: #634b0e; border-color: #e8cd84; }
+  .controls {
+    display: flex; align-items: center; flex-wrap: wrap; gap: 6px 14px; margin-bottom: 8px;
+    padding: 7px 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--panel);
+  }
+  .group { display: flex; align-items: center; gap: 6px; }
+  .group label, .key-label {
+    color: var(--faint); font-size: 9.5px; letter-spacing: .09em; text-transform: uppercase;
+    white-space: nowrap;
+  }
+  .btns { display: flex; flex-wrap: wrap; gap: 3px; }
+  .opacity-control { accent-color: var(--accent); width: 78px; }
+  .opacity-value { color: var(--muted); font-size: 11px; font-variant-numeric: tabular-nums; width: 28px; }
+  figure {
+    margin-top: 0; margin-bottom: 0; overflow: hidden; border: 1px solid var(--border);
+    border-radius: 6px; background: var(--panel);
+  }
+  .timebar {
+    display: flex; align-items: baseline; flex-wrap: wrap; gap: 6px 12px; padding: 8px 14px 7px;
+    border-bottom: 1px solid var(--border); font-variant-numeric: tabular-nums;
+  }
+  .tb-time { color: var(--text); font-size: 27px; font-weight: 650; letter-spacing: -.02em; line-height: 1.05; }
+  .tb-day { color: var(--text); font-size: 16px; font-weight: 550; }
+  .tb-kind, .tb-age { color: var(--muted); font-size: 12px; }
+  .stage {
+    aspect-ratio: 940 / 815; background: #111821; min-width: 0; overflow: hidden;
+    position: relative; user-select: none; width: 100%;
+  }
+  .stage canvas { display: block; height: 100%; inset: 0; position: absolute; width: 100%; }
+  .stage.loading canvas { opacity: .78; }
+  .status-pill {
+    position: absolute; right: 9px; top: 9px; border: 1px solid rgba(190, 210, 222, .24);
+    border-radius: 99px; background: rgba(15, 21, 28, .78); color: #e4edf3; font-size: 10px;
+    font-variant-numeric: tabular-nums; padding: 4px 7px; backdrop-filter: blur(4px);
+  }
+  .status-pill.error { color: #ffc3bc; border-color: rgba(193, 72, 59, .55); }
+  .mia-logo {
+    align-items: center; background: rgba(8, 25, 38, .82); border: 1px solid rgba(210, 232, 244, .55);
+    border-radius: 4px; bottom: 10px; display: flex; padding: 5px 7px;
+    position: absolute; right: 10px; text-decoration: none; z-index: 2;
+  }
+  .mia-logo:hover { background: rgba(19, 62, 88, .94); border-color: #8ed2ff; }
+  .mia-logo img { display: block; height: 52px; max-width: min(255px, 42vw); width: auto; }
+  .infobar {
+    align-items: center; border-top: 1px solid var(--border); display: flex; flex-wrap: wrap;
+    gap: 6px 14px; padding: 7px 12px 6px;
+  }
+  .source-line { color: var(--muted); font-size: 11px; }
+  .source-line a { color: var(--accent); }
+  .frame-meta { color: var(--faint); font-size: 10px; font-variant-numeric: tabular-nums; margin-left: auto; }
+  .radar-scale { color: var(--muted); font-size: 9.5px; margin-left: auto; min-width: 274px; }
+  .scale-head { align-items: baseline; display: flex; justify-content: space-between; margin-bottom: 3px; }
+  .scale-title { color: var(--faint); font-size: 9px; letter-spacing: .08em; text-transform: uppercase; }
+  .scale-unit { color: var(--muted); font-variant-numeric: tabular-nums; }
+  .scale-ramp {
+    background: linear-gradient(90deg,
+      #3c0077 0%, #4000c0 7%, #0000ff 14%, #1070d0 21%,
+      #00a000 29%, #00ba00 36%, #52d826 43%, #a0e020 50%,
+      #f5f000 57%, #ffc400 64%, #ff9000 71%, #ff6000 78%,
+      #ff0000 86%, #a00000 100%);
+    border: 1px solid rgba(255, 255, 255, .15); border-radius: 2px; height: 10px;
+  }
+  .scale-ticks { display: flex; justify-content: space-between; margin-top: 2px; padding-left: 40%; }
+  .scale-ticks span { font-variant-numeric: tabular-nums; }
+  .timeline { margin-top: 0; }
+  input[type="range"] { accent-color: var(--accent); display: block; margin: 7px 0 1px; width: 100%; }
+  .ticks { height: 14px; position: relative; }
+  .ticks span { color: var(--muted); font-size: 10px; position: absolute; transform: translateX(-50%); white-space: nowrap; }
+  .ticks b { color: var(--accent); font-size: 10px; font-weight: 600; position: absolute; transform: translateX(-50%); white-space: nowrap; }
+  .ticks b::before { background: var(--accent); content: ""; height: 5px; left: 50%; position: absolute; top: -6px; width: 1px; }
+  .desc { color: var(--muted); font-size: 11.5px; line-height: 1.5; margin-top: 5px; }
+  .desc strong { color: var(--text); }
+  details { border-top: 1px solid var(--border); color: var(--muted); font-size: 12px; line-height: 1.5; margin-top: 14px; padding-top: 10px; }
+  summary { color: var(--accent); cursor: pointer; font-size: 12px; }
+  .import-body { display: grid; gap: 8px; margin-top: 9px; }
+  textarea {
+    min-height: 125px; resize: vertical; width: 100%; border: 1px solid var(--border); border-radius: 5px;
+    background: var(--panel); color: var(--text); font: 11px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; padding: 8px;
+  }
+  .import-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+  .message { color: var(--faint); font-size: 11px; min-height: 1.3em; }
+  @media (max-width: 760px) {
+    header { padding: 8px 10px; } main { padding: 8px 10px 14px; }
+    h1 small { display: block; margin: 2px 0 0; }
+    .controls { flex-wrap: nowrap; margin-left: -2px; margin-right: -2px; overflow-x: auto; padding: 6px 8px; scrollbar-width: none; }
+    .controls::-webkit-scrollbar { display: none; } .group { flex: 0 0 auto; }
+    .timebar { gap: 4px 10px; padding: 6px 10px; } .tb-time { font-size: 23px; } .tb-day { font-size: 14px; }
+    .infobar { align-items: flex-start; padding: 6px 8px; } .frame-meta { margin-left: 0; width: 100%; }
+    .radar-scale { margin-left: 0; width: min(100%, 300px); }
+    .desc { white-space: normal; }
+  }
+</style>
+
+<script>
+if (new URLSearchParams(location.search).has("embed")) {
+  document.documentElement.dataset.embed = "true";
+}
+</script>
+<style>
+html[data-embed="true"] header,
+html[data-embed="true"] .local-banner,
+html[data-embed="true"] .desc,
+html[data-embed="true"] details { display: none; }
+html[data-embed="true"] main { max-width: 720px; padding: 0; }
+html[data-embed="true"] section { position: relative; }
+html[data-embed="true"] .controls {
+  display: flex;
+  background: rgba(15, 21, 28, .82);
+  border-color: rgba(190, 210, 222, .3);
+  gap: 4px;
+  left: 8px;
+  margin: 0;
+  max-width: calc(100% - 16px);
+  padding: 4px;
+  position: absolute;
+  top: 47px;
+  width: max-content;
+  z-index: 4;
+  backdrop-filter: blur(4px);
+}
+html[data-embed="true"] .controls > .group { display: none; }
+html[data-embed="true"] .controls > .group[data-embed-control="lightning"],
+html[data-embed="true"] .controls > .group[data-embed-control="animation"] {
+  display: flex;
+  gap: 4px;
+}
+html[data-embed="true"] .controls .group label,
+html[data-embed="true"] #first,
+html[data-embed="true"] #last { display: none; }
+html[data-embed="true"] .controls button { padding: 3px 7px; }
+html[data-embed="true"] .infobar {
+  align-items: end;
+  display: grid;
+  gap: 4px 12px;
+  grid-template-columns: minmax(0, 1fr) minmax(250px, 274px);
+  padding: 6px 8px;
+}
+html[data-embed="true"] .infobar .key-label,
+html[data-embed="true"] .infobar .frame-meta { display: none; }
+html[data-embed="true"] #lightning-source { display: block; grid-column: 1 / -1; }
+html[data-embed="true"] .source-line { font-size: 10px; }
+html[data-embed="true"] .radar-scale { margin-left: 0; min-width: 0; width: 274px; }
+@media (max-width: 430px) {
+  html[data-embed="true"] .infobar { grid-template-columns: 1fr; }
+  html[data-embed="true"] .radar-scale { width: 100%; }
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="bar">
+    <h1>Malta radar <small>shared Malta map frame · live radar</small></h1>
+    <span class="spacer"></span>
+    <a class="rainfall-link" href="./rainfall.html">Rainfall</a>
+    <button id="theme" type="button" aria-label="Switch colour theme" title="Switch colour theme">◐</button>
+  </div>
+</header>
+<main>
+  <p class="local-banner panel-width"><strong>LIVE RADAR.</strong> Derived from the Malta Airport MET Office public radar presentation and republished here with source attribution. This independent viewer is not affiliated with Malta International Airport.</p>
+
+  <section aria-labelledby="radar-title">
+    <div class="controls panel-width" aria-label="Radar controls">
+      <div class="group">
+        <label>Source</label>
+        <div class="btns"><button type="button" aria-pressed="true">Official radar</button></div>
+      </div>
+      <div class="group" data-embed-control="display">
+        <label>Display</label>
+        <div class="btns"><button id="cleanup" type="button" aria-pressed="true" title="Hide high-confidence radial clutter on screen; retained grids are unchanged">Clean display</button></div>
+      </div>
+      <div class="group" data-embed-control="lightning">
+        <label>Lightning</label>
+        <div class="btns"><button id="lightning" type="button" aria-pressed="true" title="Show locally retained lightning markers matching the selected radar time">Markers</button></div>
+      </div>
+      <div class="group" data-embed-control="animation">
+        <label>Animation</label>
+        <div class="btns">
+          <button id="first" type="button" title="Oldest scan">|&lt;</button>
+          <button id="prev" type="button" title="Previous scan">&lt;</button>
+          <button id="play" type="button" aria-pressed="false">Play</button>
+          <button id="next" type="button" title="Next scan">&gt;</button>
+          <button id="last" type="button" title="Latest scan">&gt;|</button>
+        </div>
+      </div>
+      <div class="group" data-embed-control="speed">
+        <label>Speed</label>
+        <div class="btns" id="speeds">
+          <button data-speed="1" type="button" aria-pressed="true">1×</button>
+          <button data-speed="2" type="button" aria-pressed="false">2×</button>
+          <button data-speed="4" type="button" aria-pressed="false">4×</button>
+        </div>
+      </div>
+      <div class="group">
+        <label for="opacity">Echo opacity</label>
+        <input class="opacity-control" id="opacity" type="range" min="45" max="100" value="88" step="1">
+        <output class="opacity-value" id="opacity-value">88%</output>
+      </div>
+      <div class="group">
+        <label>Frame</label>
+        <div class="btns">
+          <button id="refresh-live" type="button" title="Reload the latest published radar scans">Refresh radar data</button>
+          <button id="reload" type="button">Reload</button>
+        </div>
+      </div>
+      <div class="group">
+        <label>Archive</label>
+        <div class="btns">
+          <button id="save-loop" type="button">Save data loop</button>
+          <button id="use-archive" type="button" disabled>Saved 0</button>
+        </div>
+      </div>
+    </div>
+
+    <figure class="panel-width" aria-labelledby="radar-title">
+      <div class="timebar">
+        <span class="tb-time" id="radar-time">—</span>
+        <span class="tb-day" id="radar-day"></span>
+        <span class="spacer"></span>
+        <span class="tb-kind">Column-max precipitation intensity</span>
+        <span class="tb-age" id="frame-age"></span>
+      </div>
+      <div class="stage" id="stage">
+        <canvas id="radar-canvas" role="img" aria-label="Official Malta radar echoes on a clean Malta map frame"></canvas>
+        <div class="status-pill" id="image-status">Preparing local canvas…</div>
+        <a class="mia-logo" href="https://maltametoffice.com/en/radar/" target="_blank" rel="noopener" aria-label="Open Malta MET Office radar" title="Open Malta MET Office radar"><img src="assets/metoffice-logo.png" alt="Malta Airport MET Office"></a>
+      </div>
+      <div class="infobar">
+        <span class="key-label">Radar layer</span>
+        <span class="source-line"><a href="https://maltametoffice.com/en/radar/" target="_blank" rel="noopener">Malta Airport MET Office</a> · derived local palette grid · Malta time</span>
+        <span class="source-line" id="lightning-source">Satellite lightning: loading local marker data…</span>
+        <span class="frame-meta" id="frame-meta">—</span>
+        <div class="radar-scale" role="img" aria-label="Radar intensity colour scale in millimetres per hour">
+          <div class="scale-head"><span class="scale-title">Intensity</span><span class="scale-unit">mm/h</span></div>
+          <div class="scale-ramp"></div>
+          <div class="scale-ticks"><span>2.5</span><span>10</span><span>50</span></div>
+        </div>
+      </div>
+    </figure>
+
+    <div class="timeline panel-width">
+      <input id="scrub" type="range" min="0" max="0" value="0" step="1" aria-label="Choose radar scan time">
+      <div class="ticks" id="ticks" aria-hidden="true"></div>
+    </div>
+    <p class="desc panel-width" id="radar-title"><strong>Observed radar, not a forecast.</strong> The Pi retains compact categorical grids extracted from the official precipitation colours, not PNGs or inferred rain-rate values. The grid is registered from the product's 100 km range geometry onto the same Web-Mercator Malta frame as the satellite panel. Clean display smooths the palette, suppresses isolated specks and hides only high-confidence radial-sector/range-ring clutter found in the official source. Satellite-lightning rings are locally derived approximate activity-area centres from EUMETSAT's five-minute LI AFA display coverage; they are not ground strikes or exact flash locations. A licensed point feed, if configured later, remains distinct. Neither mode changes a retained radar grid or interpolates motion.</p>
+  </section>
+
+  <details class="panel-width">
+    <summary>Inspect or replace the local data-grid list</summary>
+    <div class="import-body">
+      <p>The Pi stores compact <code>MRG1</code> categorical data grids (0 = no echo; 1–14 = exact official palette classes), never source PNGs. Newer scans can include a separate <code>MRD1</code> source-edge display mask; it only improves contours on screen and never changes the stored grid. Clean display applies screen-only quality control to obvious low-intensity radial fans and near-radar range rings; Full source lets you inspect every retained source-derived value. A separate local <code>strikes.json</code> manifest holds marker records only. By default these are locally derived satellite lightning-activity areas from the public EUMETSAT LI AFA display coverage, never claimed as individual strikes. A licensed numerical point feed may replace them. The marker layer is time-matched to each radar frame and never makes a third-party browser request. The viewer normally reads the Pi manifest. Its ten-minute collector inspects two likely current public image products in memory, keeps a grid only when rain is present, then discards the image. The representation is derived from the rendered official product, not a public ODIM/rain-rate volume.</p>
+      <textarea id="frame-input" spellcheck="false" aria-label="Official radar frame URL list"></textarea>
+      <div class="import-actions">
+        <button id="load-frames" type="button">Use this local list</button>
+        <button id="restore-sample" type="button">Restore local fallback</button>
+        <button id="clear-local" type="button">Forget saved list</button>
+      </div>
+      <div class="message" id="import-message" role="status"></div>
+    </div>
+  </details>
+</main>
+
+<!-- The exact coastline vectors used by the local Malta satellite panel. -->
+<script src="../panel_geo.js"></script>
+<script>
+  "use strict";
+
+  /*
+   * This page deliberately has no remote manifest request or proxy. Its normal
+   * source is the Pi's local MRG1 categorical-grid archive written by
+   * fetch_radar.py. The collector sees the source PNG only in memory, extracts
+   * an exact grid plus optional display-edge metadata, then discards the image.
+   */
+  const DEFAULT_FRAMES = [];
+
+  // The satellite panel's fixed Malta canvas: EPSG:3857, 940 x 815.
+  const EXTENT = { west: 13.2, east: 15.55, south: 35.1, north: 36.75 };
+  const BASE_W = 940, BASE_H = 815;
+  const RADAR_CENTER = { lon: 14.4775, lat: 35.8575, x: 300, y: 300, pxPerKm: 3 };
+  const RAD = Math.PI / 180;
+  const merc = (lat) => Math.log(Math.tan(Math.PI / 4 + lat * RAD / 2));
+  const invMerc = (y) => (2 * Math.atan(Math.exp(y)) - Math.PI / 2) / RAD;
+  const GRID_SOURCE_PATTERN = /^data\/radar_grid\/columnmax_\d{4}-\d{2}-\d{2}-\d{2}-\d{2}\.mrg$/;
+  const DISPLAY_SOURCE_PATTERN = /^data\/radar_grid\/columnmax_\d{4}-\d{2}-\d{2}-\d{2}-\d{2}\.mrd$/;
+  const ECHO_PALETTE = [
+    [60, 0, 119], [64, 0, 192], [0, 0, 255], [16, 112, 208],
+    [0, 160, 0], [0, 186, 0], [82, 216, 38], [160, 224, 32],
+    [245, 240, 0], [255, 196, 0], [255, 144, 0], [255, 96, 0],
+    [255, 0, 0], [160, 0, 0]
+  ];
+  const ARCHIVE_DB = "malta-radar-local";
+  const ARCHIVE_STORE = "radar-grids";
+  const MRG_HEADER_BYTES = 16;
+  const MRG_GRID_BYTES = 600 * 600;
+  const MRD_HEADER_BYTES = 16;
+  const PI_MANIFEST_REFRESH_MS = 60 * 1000;
+  const LIGHTNING_MANIFEST_URL = "data/lightning/strikes.json";
+  const LIGHTNING_REFRESH_MS = 60 * 1000;
+  const LIGHTNING_FRAME_WINDOW_MS = 20 * 60 * 1000;
+  const LIGHTNING_MAX_MARKERS = 500;
+  const DISPLAY_TIME_ZONE = "Europe/Malta";
+  // Display-only quality control. The retained MRG grid is never changed.
+  const DISPLAY_MIN_COMPONENT_PIXELS = 24;
+  const DISPLAY_SMALL_COMPONENT_PIXELS = 48;
+  const DISPLAY_SMALL_COMPONENT_MIN_CLASS = 8;
+  // Weak palettes remain visible but cannot dominate the rendered signal.
+  const DISPLAY_CLASS_ALPHA = [0, .30, .55, .78, .92, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1];
+  const DISPLAY_SOFTEN_PX = .9;
+  // The official product occasionally contains unmistakable radial clutter.
+  // These deliberately narrow tests act only on the screen layer. MRG1 and
+  // MRD1 stay byte-for-byte as received/extracted on the Pi.
+  const CLEANUP_FAN_MAX_CLASS = 8;
+  const CLEANUP_FAN_MIN_PIXELS = 20000;
+  const CLEANUP_FAN_NEAR_RADIUS = 75;
+  const CLEANUP_FAN_FAR_RADIUS = 250;
+  const CLEANUP_FAN_MIN_ANGLE = 100;
+  const CLEANUP_RING_MAX_CLASS = 3;
+  const CLEANUP_RING_MIN_PIXELS = 200;
+  const CLEANUP_RING_MAX_RADIUS = 75;
+  const CLEANUP_RING_MAX_THICKNESS = 25;
+  const CLEANUP_RING_MIN_ANGLE = 60;
+  // MRD1 can faithfully retain soft source edges, including edges around a
+  // weak source ring. This narrower display-only pass removes just a broad,
+  // thin low-tier annulus after the sidecar has been merged.
+  const CLEANUP_DISPLAY_RING_MIN_PIXELS = 100;
+  const CLEANUP_DISPLAY_RING_MIN_ANGLE = 120;
+
+  const $ = (id) => document.getElementById(id);
+  const state = {
+    frames: [], index: 0, playing: false, speed: 1, opacity: .88, timer: null,
+    currentLayer: null,
+    layerCache: new Map(), inflight: new Map(), token: 0,
+    displayUrls: new Map(), displayCache: new Map(), displayInflight: new Map(),
+    cssWidth: 0, cssHeight: 0, dpr: 1, preferArchive: false, piSource: false,
+    archiveWrites: new Map(), piManifestTimer: null, piManifestPromise: null,
+    piManifestSignature: "", cleanDisplay: true,
+    lightning: [], lightningInfo: null, lightningEnabled: true,
+    lightningTimer: null, lightningPromise: null
+  };
+  let archiveDatabasePromise = null;
+
+  function archiveDatabase() {
+    if (!("indexedDB" in window)) return Promise.reject(new Error("Local archive is unavailable in this browser."));
+    if (archiveDatabasePromise) return archiveDatabasePromise;
+    archiveDatabasePromise = new Promise((resolve, reject) => {
+      const request = window.indexedDB.open(ARCHIVE_DB, 3);
+      request.onupgradeneeded = () => {
+        const database = request.result;
+        // v3 deliberately removes the old browser PNG cache. This prototype
+        // now archives only compact local MRG1 data grids.
+        if (database.objectStoreNames.contains("raw-frames")) database.deleteObjectStore("raw-frames");
+        const store = database.objectStoreNames.contains(ARCHIVE_STORE)
+          ? request.transaction.objectStore(ARCHIVE_STORE)
+          : database.createObjectStore(ARCHIVE_STORE, { keyPath: "url" });
+        if (!store.indexNames.contains("timestamp")) store.createIndex("timestamp", "timestamp");
+      };
+      request.onsuccess = () => {
+        const database = request.result;
+        // An older radar tab must release its database before a future format
+        // upgrade. The live Pi viewer itself never depends on this optional
+        // browser archive.
+        database.onversionchange = () => database.close();
+        resolve(database);
+      };
+      request.onerror = () => reject(request.error || new Error("Could not open local archive."));
+      request.onblocked = () => reject(new Error("Local archive is blocked by another tab."));
+    });
+    return archiveDatabasePromise;
+  }
+
+  async function archivePut(url, blob) {
+    const database = await archiveDatabase();
+    return new Promise((resolve, reject) => {
+      const transaction = database.transaction(ARCHIVE_STORE, "readwrite");
+      transaction.oncomplete = resolve;
+      transaction.onerror = () => reject(transaction.error || new Error("Could not save local frame."));
+      transaction.onabort = () => reject(transaction.error || new Error("Local frame save was aborted."));
+      const request = transaction.objectStore(ARCHIVE_STORE).put({
+        url: url,
+        timestamp: (frameTime(url) || new Date(0)).getTime(),
+        savedAt: Date.now(),
+        blob: blob
+      });
+      request.onerror = () => reject(request.error || new Error("Could not queue local frame save."));
+    });
+  }
+
+  async function archiveGet(url) {
+    const database = await archiveDatabase();
+    return new Promise((resolve, reject) => {
+      const request = database.transaction(ARCHIVE_STORE, "readonly").objectStore(ARCHIVE_STORE).get(url);
+      request.onsuccess = () => resolve(request.result || null);
+      request.onerror = () => reject(request.error || new Error("Could not read local frame."));
+    });
+  }
+
+  async function archiveCount() {
+    const database = await archiveDatabase();
+    return new Promise((resolve, reject) => {
+      const request = database.transaction(ARCHIVE_STORE, "readonly").objectStore(ARCHIVE_STORE).count();
+      request.onsuccess = () => resolve(request.result || 0);
+      request.onerror = () => reject(request.error || new Error("Could not count local frames."));
+    });
+  }
+
+  async function archiveUrls() {
+    const database = await archiveDatabase();
+    return new Promise((resolve, reject) => {
+      const store = database.transaction(ARCHIVE_STORE, "readonly").objectStore(ARCHIVE_STORE);
+      const request = store.index("timestamp").getAllKeys();
+      request.onsuccess = () => resolve(request.result || []);
+      request.onerror = () => reject(request.error || new Error("Could not list local frames."));
+    });
+  }
+
+  async function updateArchiveButton() {
+    try {
+      const count = await archiveCount();
+      $("use-archive").textContent = "Saved " + count;
+      $("use-archive").disabled = count === 0;
+    } catch (_) {
+      $("use-archive").textContent = "Archive unavailable";
+      $("use-archive").disabled = true;
+    }
+  }
+
+  async function gridBlobFor(url, force) {
+    let archived = null;
+    if (state.preferArchive) {
+      archived = await archiveGet(url).catch(() => null);
+      if (archived && archived.blob) return { blob: archived.blob, local: true };
+    }
+    try {
+      const response = await fetch(url, { cache: force ? "reload" : "default" });
+      if (!response.ok) throw new Error("HTTP " + response.status);
+      return { blob: await response.blob(), local: false };
+    } catch (error) {
+      archived = archived || await archiveGet(url).catch(() => null);
+      if (archived && archived.blob) return { blob: archived.blob, local: true };
+      throw error;
+    }
+  }
+
+  async function decodeMrg(blob) {
+    const bytes = new Uint8Array(await blob.arrayBuffer());
+    if (bytes.length < MRG_HEADER_BYTES || bytes[0] !== 77 || bytes[1] !== 82 || bytes[2] !== 71 || bytes[3] !== 49) {
+      throw new Error("Not an MRG1 radar grid.");
+    }
+    const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    const width = view.getUint16(4), height = view.getUint16(6);
+    const encoding = bytes[8], paletteVersion = bytes[9], flags = view.getUint16(10);
+    const expected = view.getUint32(12);
+    if (width !== 600 || height !== 600 || paletteVersion !== 1 || flags !== 0 || expected !== MRG_GRID_BYTES) {
+      throw new Error("Unexpected MRG1 grid header.");
+    }
+    if (encoding === 0) {
+      if (bytes.length !== MRG_HEADER_BYTES + MRG_GRID_BYTES) throw new Error("Truncated raw MRG1 grid.");
+      const grid = bytes.slice(MRG_HEADER_BYTES);
+      if (grid.some((code) => code > ECHO_PALETTE.length)) throw new Error("Invalid MRG1 palette code.");
+      return grid;
+    }
+    if (encoding !== 1 || (bytes.length - MRG_HEADER_BYTES) % 2) throw new Error("Unsupported MRG1 encoding.");
+    const grid = new Uint8Array(MRG_GRID_BYTES);
+    let output = 0;
+    for (let offset = MRG_HEADER_BYTES; offset < bytes.length; offset += 2) {
+      const word = view.getUint16(offset);
+      const code = word >>> 12, count = (word & 0x0fff) + 1;
+      if (code > ECHO_PALETTE.length || output + count > MRG_GRID_BYTES) throw new Error("Invalid MRG1 run.");
+      grid.fill(code, output, output + count);
+      output += count;
+    }
+    if (output !== MRG_GRID_BYTES) throw new Error("Incomplete MRG1 grid.");
+    return grid;
+  }
+
+  async function decodeMrd(blob) {
+    const bytes = new Uint8Array(await blob.arrayBuffer());
+    if (bytes.length < MRD_HEADER_BYTES || bytes[0] !== 77 || bytes[1] !== 82 || bytes[2] !== 68 || bytes[3] !== 49) {
+      throw new Error("Not MRD1 display metadata.");
+    }
+    const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
+    const width = view.getUint16(4), height = view.getUint16(6);
+    const encoding = bytes[8], paletteVersion = bytes[9], flags = view.getUint16(10);
+    const expected = view.getUint32(12);
+    if (width !== 600 || height !== 600 || encoding !== 1 || paletteVersion !== 1 || flags !== 0 || expected !== MRG_GRID_BYTES ||
+        bytes.length === MRD_HEADER_BYTES || (bytes.length - MRD_HEADER_BYTES) % 3) {
+      throw new Error("Unexpected MRD1 display metadata.");
+    }
+    const display = new Uint8Array(MRG_GRID_BYTES);
+    let output = 0;
+    for (let offset = MRD_HEADER_BYTES; offset < bytes.length; offset += 3) {
+      const value = bytes[offset], count = view.getUint16(offset + 1) + 1;
+      const code = value >>> 4, coverage = value & 15;
+      if (output + count > MRG_GRID_BYTES || (value && (code < 1 || code > ECHO_PALETTE.length || coverage < 1))) {
+        throw new Error("Invalid MRD1 display run.");
+      }
+      display.fill(value, output, output + count);
+      output += count;
+    }
+    if (output !== MRG_GRID_BYTES) throw new Error("Incomplete MRD1 display metadata.");
+    return display;
+  }
+
+  async function displayMaskFor(dataUrl, force) {
+    const displayUrl = state.displayUrls.get(dataUrl);
+    if (!displayUrl) return null;
+    if (force) state.displayCache.delete(dataUrl);
+    if (state.displayCache.has(dataUrl)) return state.displayCache.get(dataUrl);
+    if (state.displayInflight.has(dataUrl)) return state.displayInflight.get(dataUrl);
+    const pending = (async () => {
+      try {
+        const response = await fetch(displayUrl, { cache: force ? "reload" : "default" });
+        if (!response.ok) return null;
+        return await decodeMrd(await response.blob());
+      } catch (_) {
+        // Edge metadata is optional; exact MRG1 rendering remains available.
+        return null;
+      }
+    })();
+    state.displayInflight.set(dataUrl, pending);
+    try {
+      const display = await pending;
+      state.displayCache.set(dataUrl, display);
+      return display;
+    } finally {
+      state.displayInflight.delete(dataUrl);
+    }
+  }
+
+  function queueArchivePut(url, blob) {
+    if (state.archiveWrites.has(url)) return state.archiveWrites.get(url);
+    const write = archivePut(url, blob)
+      .then(() => updateArchiveButton())
+      .catch((error) => {
+        const button = $("use-archive");
+        button.textContent = "Archive unavailable";
+        button.disabled = true;
+        button.title = error && error.message ? error.message : "Local browser storage is unavailable.";
+      })
+      .finally(() => state.archiveWrites.delete(url));
+    state.archiveWrites.set(url, write);
+    return write;
+  }
+
+  function frameTime(url) {
+    const match = url.match(/columnmax_(\d{4})-(\d{2})-(\d{2})-(\d{2})-(\d{2})\.(?:mrg|png)/);
+    return match ? new Date(Date.UTC(+match[1], +match[2] - 1, +match[3], +match[4], +match[5])) : null;
+  }
+
+  function normalize(candidate) {
+    const values = Array.isArray(candidate) ? candidate : [];
+    const urls = values.map((item) => typeof item === "string" ? item : item && (item.data_url || item.url))
+      .filter((url) => typeof url === "string" && GRID_SOURCE_PATTERN.test(url));
+    return Array.from(new Set(urls)).sort((a, b) => frameTime(a) - frameTime(b));
+  }
+
+  function formatLocalTime(date) {
+    return new Intl.DateTimeFormat("en-GB", {
+      timeZone: DISPLAY_TIME_ZONE, hour: "2-digit", minute: "2-digit", hour12: false,
+      timeZoneName: "short"
+    }).format(date);
+  }
+
+  function formatDay(date) {
+    return new Intl.DateTimeFormat("en-GB", {
+      timeZone: DISPLAY_TIME_ZONE, weekday: "short", day: "numeric", month: "short", year: "numeric"
+    }).format(date);
+  }
+
+  function formatLocalDateTime(date) {
+    return formatDay(date) + " " + formatLocalTime(date);
+  }
+
+  function formatAge(date) {
+    const minutes = Math.round((Date.now() - date.getTime()) / 60000);
+    if (minutes < 1) return "just received";
+    if (minutes < 60) return minutes + " min old";
+    if (minutes < 1440) return Math.round(minutes / 60) + " h old";
+    return Math.round(minutes / 1440) + " d old";
+  }
+
+  function normaliseLightningRecord(record, defaultMarkerKind) {
+    if (!record || typeof record !== "object") return null;
+    const time = new Date(record.observed_at || record.time || record.timestamp || "");
+    const latitude = Number(record.lat ?? record.latitude);
+    const longitude = Number(record.lon ?? record.longitude ?? record.lng);
+    if (Number.isNaN(time.getTime()) || !Number.isFinite(latitude) || !Number.isFinite(longitude) ||
+        latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) return null;
+    const rawType = String(record.type || record.lightning_type || "").toLowerCase();
+    const type = /^(cg|cloud.?ground|ground|2)$/.test(rawType) ? "cg" :
+      /^(ic|cc|cloud.?cloud|intra.?cloud|1)$/.test(rawType) ? "ic" : "unknown";
+    const current = Number(record.current_ka ?? record.current);
+    const areaCells = Number(record.area_cells);
+    const markerKind = String(record.marker_kind || defaultMarkerKind || "point_observation");
+    return {
+      observedAt: time.getTime(), lat: latitude, lon: longitude, type: type,
+      currentKa: Number.isFinite(current) ? current : null,
+      markerKind: markerKind,
+      areaCells: Number.isFinite(areaCells) && areaCells > 0 ? areaCells : null
+    };
+  }
+
+  function lightningForCurrentFrame() {
+    const frame = frameTime(state.frames[state.index] || "");
+    if (!frame) return [];
+    const end = frame.getTime();
+    const start = end - LIGHTNING_FRAME_WINDOW_MS;
+    return state.lightning.filter((point) => point.observedAt >= start && point.observedAt <= end)
+      .slice(-LIGHTNING_MAX_MARKERS);
+  }
+
+  function lightningForMap() {
+    // The collector keeps a small buffer beyond the displayed map so that
+    // activity can enter naturally at an edge. The readout counts only what
+    // can actually be seen in this fixed Malta panel.
+    return lightningForCurrentFrame().filter((point) =>
+      point.lat >= EXTENT.south && point.lat <= EXTENT.north &&
+      point.lon >= EXTENT.west && point.lon <= EXTENT.east
+    );
+  }
+
+  function syncLightningMode() {
+    const button = $("lightning");
+    const embedded = document.documentElement.dataset.embed === "true";
+    button.setAttribute("aria-pressed", String(state.lightningEnabled));
+    button.textContent = state.lightningEnabled
+      ? (embedded ? "Lightning" : "Markers")
+      : (embedded ? "Lightning off" : "Hidden");
+    button.title = state.lightningEnabled
+      ? "Showing locally retained lightning markers matching the selected radar time."
+      : "Lightning markers are hidden. Click to show them.";
+  }
+
+  function syncLightningReadout() {
+    const target = $("lightning-source");
+    const info = state.lightningInfo;
+    if (!info) {
+      target.textContent = "Satellite lightning: loading local marker data…";
+      return;
+    }
+    const status = info.status || {};
+    if (status.state === "unconfigured") {
+      target.textContent = "Lightning: no local feed configured";
+      return;
+    }
+    if (status.state !== "ok") {
+      target.textContent = "Satellite lightning: local data unavailable";
+      target.title = status.detail || "The local lightning manifest could not be read.";
+      return;
+    }
+    const points = lightningForMap().length;
+    const satelliteAreas = info.markerKind === "satellite_activity_area";
+    const provider = info.provider ? " · " + info.provider : "";
+    if (satelliteAreas) {
+      target.textContent = "Satellite lightning: " + (points ? points + " activity area" + (points === 1 ? "" : "s") : "no activity areas") + " on map / prior 20 min" + provider;
+      target.title = info.representation || info.attribution || status.detail || "Derived satellite lightning-activity areas.";
+    } else {
+      target.textContent = "Lightning: " + (points ? points + " point" + (points === 1 ? "" : "s") : "no points") + " on map / prior 20 min" + provider;
+      target.title = info.representation || info.attribution || status.detail || "Local numerical lightning points.";
+    }
+  }
+
+  async function loadLightning() {
+    if (state.lightningPromise) return state.lightningPromise;
+    const pending = (async () => {
+      try {
+        const response = await fetch(LIGHTNING_MANIFEST_URL, { cache: "no-store" });
+        if (!response.ok) throw new Error("HTTP " + response.status);
+        const manifest = await response.json();
+        const sourceMarkers = Array.isArray(manifest.markers) ? manifest.markers : Array.isArray(manifest.strikes) ? manifest.strikes : [];
+        const markerKind = typeof manifest.marker_kind === "string" ? manifest.marker_kind : "point_observation";
+        const points = sourceMarkers.map((record) => normaliseLightningRecord(record, markerKind)).filter(Boolean);
+        points.sort((left, right) => left.observedAt - right.observedAt);
+        state.lightning = points;
+        state.lightningInfo = {
+          provider: typeof manifest.provider === "string" ? manifest.provider : "",
+          attribution: typeof manifest.attribution === "string" ? manifest.attribution : "",
+          representation: typeof manifest.representation === "string" ? manifest.representation : "",
+          markerKind: markerKind,
+          status: manifest.status && typeof manifest.status === "object" ? manifest.status : { state: "ok", detail: "" }
+        };
+      } catch (error) {
+        state.lightningInfo = { status: { state: "unavailable", detail: error && error.message ? error.message : "Could not read local lightning data." } };
+      }
+      syncLightningReadout();
+      draw();
+      return state.lightningInfo && state.lightningInfo.status && state.lightningInfo.status.state === "ok";
+    })();
+    state.lightningPromise = pending;
+    try {
+      return await pending;
+    } finally {
+      state.lightningPromise = null;
+    }
+  }
+
+  function scheduleLightningRefresh() {
+    clearTimeout(state.lightningTimer);
+    state.lightningTimer = setTimeout(async () => {
+      if (document.visibilityState === "visible") await loadLightning();
+      scheduleLightningRefresh();
+    }, LIGHTNING_REFRESH_MS);
+  }
+
+  function setStatus(text, error) {
+    const status = $("image-status");
+    status.textContent = text;
+    status.classList.toggle("error", !!error);
+  }
+
+  function updateTicks() {
+    const ticks = $("ticks");
+    ticks.replaceChildren();
+    const length = state.frames.length;
+    if (!length) return;
+    const positions = Array.from(new Set([0, Math.round((length - 1) / 3), Math.round((length - 1) * 2 / 3), length - 1]));
+    positions.forEach((index) => {
+      const tick = document.createElement(index === state.index ? "b" : "span");
+      tick.style.left = (length === 1 ? 0 : index / (length - 1) * 100) + "%";
+      tick.textContent = formatLocalTime(frameTime(state.frames[index]));
+      ticks.append(tick);
+    });
+  }
+
+  function syncControls() {
+    $("scrub").value = String(state.index);
+    $("first").disabled = state.index === 0;
+    $("prev").disabled = state.index === 0;
+    $("last").disabled = state.index === state.frames.length - 1;
+    $("next").disabled = state.index === state.frames.length - 1;
+    $("play").disabled = state.frames.length < 2;
+    syncDisplayMode();
+    syncLightningMode();
+    updateTicks();
+  }
+
+  function syncDisplayMode() {
+    const button = $("cleanup");
+    button.setAttribute("aria-pressed", String(state.cleanDisplay));
+    button.textContent = state.cleanDisplay ? "Clean display" : "Full source";
+    button.title = state.cleanDisplay
+      ? "Showing a display-only cleanup of obvious radial clutter. Click to inspect the full source-derived display."
+      : "Showing the full source-derived display. Click to hide only high-confidence radial clutter.";
+  }
+
+  function syncReadout() {
+    const url = state.frames[state.index], time = frameTime(url);
+    if (!time) return;
+    $("radar-time").textContent = formatLocalTime(time);
+    $("radar-day").textContent = formatDay(time);
+    $("frame-age").textContent = formatAge(time);
+    const displayEdgeNote = state.displayCache.get(url) ? " · source-edge display mask" : "";
+    const cleanupNote = state.cleanDisplay ? " · clutter-reduced display" : " · full-source display";
+    $("frame-meta").textContent = (state.index + 1) + " of " + state.frames.length +
+      (state.preferArchive ? " · saved browser data archive" : state.piSource ? " · published derived MRG1 grid" : " · local 940 × 815 map canvas") +
+      displayEdgeNote + cleanupNote;
+    syncLightningReadout();
+  }
+
+  /*
+   * The stored grid is a 600 x 600 km-plane with a 300 px range radius
+   * centred on Luqa. Each satellite-frame pixel is inverse-mapped into it.
+   */
+  function angularSpanDegrees(angleBins) {
+    let occupied = 0;
+    for (let index = 0; index < angleBins.length; index++) occupied += angleBins[index] ? 1 : 0;
+    if (!occupied) return 0;
+    let largestGap = 0, gap = 0;
+    for (let index = 0; index < angleBins.length * 2; index++) {
+      if (angleBins[index % angleBins.length]) {
+        gap = 0;
+      } else {
+        gap++;
+        largestGap = Math.max(largestGap, gap);
+      }
+    }
+    return Math.max(0, 360 - Math.min(360, largestGap));
+  }
+
+  function hasStrongerNeighbourhood(sourceMask, queue, count) {
+    for (let index = 0; index < count; index++) {
+      const current = queue[index];
+      const cx = current % 600, cy = (current - cx) / 600;
+      for (let oy = -2; oy <= 2; oy++) {
+        const ny = cy + oy;
+        if (ny < 0 || ny >= 600) continue;
+        for (let ox = -2; ox <= 2; ox++) {
+          const nx = cx + ox;
+          if (nx < 0 || nx >= 600) continue;
+          if (sourceMask[ny * 600 + nx] >= 4) return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  function markPolarComponents(sourceMask, maximumClass, isClutter, rejected) {
+    const seen = new Uint8Array(sourceMask.length);
+    const queue = new Int32Array(sourceMask.length);
+    for (let start = 0; start < sourceMask.length; start++) {
+      if (!sourceMask[start] || sourceMask[start] > maximumClass || seen[start]) continue;
+      let head = 0, tail = 0;
+      let minimumRadius = Infinity, maximumRadius = 0;
+      const angleBins = new Uint8Array(360);
+      queue[tail++] = start;
+      seen[start] = 1;
+      while (head < tail) {
+        const current = queue[head++];
+        const cx = current % 600, cy = (current - cx) / 600;
+        const dx = cx - RADAR_CENTER.x, dy = cy - RADAR_CENTER.y;
+        const radius = Math.hypot(dx, dy);
+        minimumRadius = Math.min(minimumRadius, radius);
+        maximumRadius = Math.max(maximumRadius, radius);
+        if (radius) {
+          const angle = Math.atan2(dy, dx);
+          angleBins[Math.floor(((angle + Math.PI * 2) % (Math.PI * 2)) / (Math.PI * 2) * 360)] = 1;
+        }
+        for (let oy = -1; oy <= 1; oy++) {
+          const ny = cy + oy;
+          if (ny < 0 || ny >= 600) continue;
+          for (let ox = -1; ox <= 1; ox++) {
+            const nx = cx + ox;
+            if ((ox === 0 && oy === 0) || nx < 0 || nx >= 600) continue;
+            const neighbour = ny * 600 + nx;
+            if (!sourceMask[neighbour] || sourceMask[neighbour] > maximumClass || seen[neighbour]) continue;
+            seen[neighbour] = 1;
+            queue[tail++] = neighbour;
+          }
+        }
+      }
+      const stats = {
+        pixels: tail, minimumRadius: minimumRadius, maximumRadius: maximumRadius,
+        angleSpan: angularSpanDegrees(angleBins)
+      };
+      if (isClutter(stats, queue, tail)) {
+        for (let index = 0; index < tail; index++) rejected[queue[index]] = 1;
+      }
+    }
+  }
+
+  function polarClutterMask(sourceMask) {
+    const rejected = new Uint8Array(sourceMask.length);
+    markPolarComponents(sourceMask, CLEANUP_FAN_MAX_CLASS, (stats) =>
+      stats.pixels >= CLEANUP_FAN_MIN_PIXELS &&
+      stats.minimumRadius < CLEANUP_FAN_NEAR_RADIUS &&
+      stats.maximumRadius > CLEANUP_FAN_FAR_RADIUS &&
+      stats.angleSpan >= CLEANUP_FAN_MIN_ANGLE, rejected);
+    markPolarComponents(sourceMask, CLEANUP_RING_MAX_CLASS, (stats, queue, count) =>
+      stats.pixels >= CLEANUP_RING_MIN_PIXELS &&
+      stats.maximumRadius < CLEANUP_RING_MAX_RADIUS &&
+      stats.maximumRadius - stats.minimumRadius < CLEANUP_RING_MAX_THICKNESS &&
+      stats.angleSpan >= CLEANUP_RING_MIN_ANGLE &&
+      !hasStrongerNeighbourhood(sourceMask, queue, count), rejected);
+    return rejected;
+  }
+
+  function displayClutterMask(sourceMask, displayMask) {
+    const rejected = expandRejectionToDisplay(sourceMask, displayMask, polarClutterMask(sourceMask));
+    markPolarComponents(displayMask, CLEANUP_RING_MAX_CLASS, (stats) =>
+      stats.pixels >= CLEANUP_DISPLAY_RING_MIN_PIXELS &&
+      stats.maximumRadius < CLEANUP_RING_MAX_RADIUS &&
+      stats.maximumRadius - stats.minimumRadius < CLEANUP_RING_MAX_THICKNESS &&
+      stats.angleSpan >= CLEANUP_DISPLAY_RING_MIN_ANGLE, rejected);
+    return rejected;
+  }
+
+  function expandRejectionToDisplay(sourceMask, displayMask, rawRejected) {
+    const rejected = rawRejected.slice();
+    const seen = new Uint8Array(displayMask.length);
+    const queue = new Int32Array(displayMask.length);
+    for (let start = 0; start < displayMask.length; start++) {
+      if (!displayMask[start] || seen[start]) continue;
+      let head = 0, tail = 0, touchesRejected = false;
+      queue[tail++] = start;
+      seen[start] = 1;
+      while (head < tail) {
+        const current = queue[head++];
+        touchesRejected ||= !!rawRejected[current];
+        const cx = current % 600, cy = (current - cx) / 600;
+        for (let oy = -1; oy <= 1; oy++) {
+          const ny = cy + oy;
+          if (ny < 0 || ny >= 600) continue;
+          for (let ox = -1; ox <= 1; ox++) {
+            const nx = cx + ox;
+            if ((ox === 0 && oy === 0) || nx < 0 || nx >= 600) continue;
+            const neighbour = ny * 600 + nx;
+            if (!displayMask[neighbour] || seen[neighbour]) continue;
+            seen[neighbour] = 1;
+            queue[tail++] = neighbour;
+          }
+        }
+      }
+      if (touchesRejected) {
+        for (let index = 0; index < tail; index++) {
+          const current = queue[index];
+          if (!sourceMask[current]) rejected[current] = 1;
+        }
+      }
+    }
+    return rejected;
+  }
+
+  function componentKeepMask(sourceMask, minimumPixels, rejected) {
+    const keep = new Uint8Array(sourceMask.length);
+    const seen = new Uint8Array(sourceMask.length);
+    const queue = new Int32Array(sourceMask.length);
+    for (let start = 0; start < sourceMask.length; start++) {
+      if (!sourceMask[start] || (rejected && rejected[start]) || seen[start]) continue;
+      let head = 0, tail = 0;
+      let strongestClass = 0;
+      queue[tail++] = start;
+      seen[start] = 1;
+      while (head < tail) {
+        const current = queue[head++];
+        strongestClass = Math.max(strongestClass, sourceMask[current]);
+        const cx = current % 600, cy = (current - cx) / 600;
+        for (let oy = -1; oy <= 1; oy++) {
+          const ny = cy + oy;
+          if (ny < 0 || ny >= 600) continue;
+          for (let ox = -1; ox <= 1; ox++) {
+            const nx = cx + ox;
+            if ((ox === 0 && oy === 0) || nx < 0 || nx >= 600) continue;
+            const neighbour = ny * 600 + nx;
+            if (!sourceMask[neighbour] || (rejected && rejected[neighbour]) || seen[neighbour]) continue;
+            seen[neighbour] = 1;
+            queue[tail++] = neighbour;
+          }
+        }
+      }
+      if (tail >= minimumPixels && (tail >= DISPLAY_SMALL_COMPONENT_PIXELS || strongestClass >= DISPLAY_SMALL_COMPONENT_MIN_CLASS)) {
+        for (let index = 0; index < tail; index++) keep[queue[index]] = 1;
+      }
+    }
+    return keep;
+  }
+
+  function makeEchoLayerFromGrid(sourceMask, displayEdges) {
+    if (!(sourceMask instanceof Uint8Array) || sourceMask.length !== 600 * 600) {
+      throw new Error("Invalid local radar grid.");
+    }
+    let displayMask = sourceMask;
+    let displayAlpha = null;
+    if (displayEdges) {
+      if (!(displayEdges instanceof Uint8Array) || displayEdges.length !== sourceMask.length) {
+        throw new Error("Invalid MRD1 display metadata.");
+      }
+      // MRD1 is an optional display companion. It fills only source pixels
+      // absent from strict MRG1, leaving archived categorical observations
+      // byte-for-byte untouched.
+      displayMask = sourceMask.slice();
+      displayAlpha = new Uint8Array(sourceMask.length);
+      displayAlpha.fill(255);
+      for (let index = 0; index < displayEdges.length; index++) {
+        const value = displayEdges[index];
+        if (!value || displayMask[index]) continue;
+        displayMask[index] = value >>> 4;
+        displayAlpha[index] = Math.round((value & 15) * 255 / 15);
+      }
+    }
+    // This mask only excludes display clutter/specks before the
+    // palette-preserving reprojection; neither data file is modified.
+    const rejected = state.cleanDisplay ? displayClutterMask(sourceMask, displayMask) : null;
+    return projectEchoGrid(
+      displayMask,
+      componentKeepMask(displayMask, DISPLAY_MIN_COMPONENT_PIXELS, rejected),
+      displayAlpha
+    );
+  }
+
+  function projectEchoGrid(sourceMask, keep, sourceAlpha) {
+    const layer = document.createElement("canvas");
+    layer.width = BASE_W;
+    layer.height = BASE_H;
+    const outputContext = layer.getContext("2d");
+    const output = outputContext.createImageData(BASE_W, BASE_H);
+    const pixels = output.data;
+    const yTop = merc(EXTENT.north);
+    const ySpan = yTop - merc(EXTENT.south);
+    const lonKm = 111.32 * Math.cos(RADAR_CENTER.lat * RAD);
+    const circleRadius = 300;
+
+    for (let y = 0; y < BASE_H; y++) {
+      const lat = invMerc(yTop - y / (BASE_H - 1) * ySpan);
+      const sourceY = RADAR_CENTER.y - (lat - RADAR_CENTER.lat) * 111.32 * RADAR_CENTER.pxPerKm;
+      const sourceY0 = Math.floor(sourceY);
+      if (sourceY0 < 0 || sourceY0 >= 599) continue;
+      const fractionY = sourceY - sourceY0;
+      for (let x = 0; x < BASE_W; x++) {
+        const lon = EXTENT.west + x / (BASE_W - 1) * (EXTENT.east - EXTENT.west);
+        const sourceX = RADAR_CENTER.x + (lon - RADAR_CENTER.lon) * lonKm * RADAR_CENTER.pxPerKm;
+        const sourceX0 = Math.floor(sourceX);
+        if (sourceX0 < 0 || sourceX0 >= 599) continue;
+        const dx = sourceX - RADAR_CENTER.x, dy = sourceY - RADAR_CENTER.y;
+        const distance = Math.hypot(dx, dy);
+        if (distance > circleRadius + 1) continue;
+
+        // The raw values are categorical. Sample four neighbouring cells only
+        // to determine observed coverage at this map pixel; select a native
+        // palette class rather than blending RGB or inventing an intensity.
+        const fractionX = sourceX - sourceX0;
+        const index00 = sourceY0 * 600 + sourceX0;
+        const index10 = index00 + 1;
+        const index01 = index00 + 600;
+        const index11 = index01 + 1;
+        const weight00 = (1 - fractionX) * (1 - fractionY);
+        const weight10 = fractionX * (1 - fractionY);
+        const weight01 = (1 - fractionX) * fractionY;
+        const weight11 = fractionX * fractionY;
+        const code00 = keep && !keep[index00] ? 0 : sourceMask[index00];
+        const code10 = keep && !keep[index10] ? 0 : sourceMask[index10];
+        const code01 = keep && !keep[index01] ? 0 : sourceMask[index01];
+        const code11 = keep && !keep[index11] ? 0 : sourceMask[index11];
+        let coverage = 0, selectedCode = 0, selectedWeight = -1;
+        const contribution00 = code00 ? weight00 * DISPLAY_CLASS_ALPHA[code00] * (sourceAlpha ? sourceAlpha[index00] / 255 : 1) : 0;
+        const contribution10 = code10 ? weight10 * DISPLAY_CLASS_ALPHA[code10] * (sourceAlpha ? sourceAlpha[index10] / 255 : 1) : 0;
+        const contribution01 = code01 ? weight01 * DISPLAY_CLASS_ALPHA[code01] * (sourceAlpha ? sourceAlpha[index01] / 255 : 1) : 0;
+        const contribution11 = code11 ? weight11 * DISPLAY_CLASS_ALPHA[code11] * (sourceAlpha ? sourceAlpha[index11] / 255 : 1) : 0;
+        coverage = contribution00 + contribution10 + contribution01 + contribution11;
+        // Weighted categorical mode: adjacent samples of the same observed
+        // class are combined, but output RGB is still one palette swatch.
+        const aggregate00 = code00 ? contribution00 +
+          (code10 === code00 ? contribution10 : 0) +
+          (code01 === code00 ? contribution01 : 0) +
+          (code11 === code00 ? contribution11 : 0) : 0;
+        const aggregate10 = code10 ? contribution10 +
+          (code00 === code10 ? contribution00 : 0) +
+          (code01 === code10 ? contribution01 : 0) +
+          (code11 === code10 ? contribution11 : 0) : 0;
+        const aggregate01 = code01 ? contribution01 +
+          (code00 === code01 ? contribution00 : 0) +
+          (code10 === code01 ? contribution10 : 0) +
+          (code11 === code01 ? contribution11 : 0) : 0;
+        const aggregate11 = code11 ? contribution11 +
+          (code00 === code11 ? contribution00 : 0) +
+          (code10 === code11 ? contribution10 : 0) +
+          (code01 === code11 ? contribution01 : 0) : 0;
+        if (aggregate00 > selectedWeight) { selectedCode = code00; selectedWeight = aggregate00; }
+        if (aggregate10 > selectedWeight) { selectedCode = code10; selectedWeight = aggregate10; }
+        if (aggregate01 > selectedWeight) { selectedCode = code01; selectedWeight = aggregate01; }
+        if (aggregate11 > selectedWeight) { selectedCode = code11; selectedWeight = aggregate11; }
+        if (!selectedCode || !coverage) continue;
+        const paletteIndex = selectedCode - 1;
+        const colour = ECHO_PALETTE[paletteIndex];
+        const outputOffset = (y * BASE_W + x) * 4;
+        pixels[outputOffset] = colour[0];
+        pixels[outputOffset + 1] = colour[1];
+        pixels[outputOffset + 2] = colour[2];
+        const rangeAlpha = Math.max(0, Math.min(1, (circleRadius + 1 - distance) / 1.5));
+        pixels[outputOffset + 3] = Math.round(255 * coverage * rangeAlpha);
+      }
+    }
+    outputContext.putImageData(output, 0, 0);
+    // A fraction-of-a-pixel visual soften approximates linear radar-texture
+    // sampling at this map scale. It is applied after the categorical render;
+    // data grids and their palette classes remain untouched.
+    const softened = document.createElement("canvas");
+    softened.width = BASE_W;
+    softened.height = BASE_H;
+    const softenContext = softened.getContext("2d");
+    softenContext.filter = "blur(" + DISPLAY_SOFTEN_PX + "px)";
+    softenContext.drawImage(layer, 0, 0);
+    return softened;
+  }
+
+  async function gridLayerFor(url, force) {
+    if (force) state.layerCache.delete(url);
+    if (state.layerCache.has(url)) return state.layerCache.get(url);
+    if (state.inflight.has(url)) return state.inflight.get(url);
+    const pending = (async () => {
+      const [raw, displayEdges] = await Promise.all([
+        gridBlobFor(url, force),
+        displayMaskFor(url, force)
+      ]);
+      let grid;
+      let usedArchiveFallback = false;
+      try {
+        grid = await decodeMrg(raw.blob);
+      } catch (error) {
+        if (raw.local) throw error;
+        const archived = await archiveGet(url).catch(() => null);
+        if (!archived || !archived.blob) throw error;
+        grid = await decodeMrg(archived.blob);
+        usedArchiveFallback = true;
+      }
+      const layer = makeEchoLayerFromGrid(grid, displayEdges);
+      if (!raw.local && !usedArchiveFallback) {
+        // Archive the compact data grid, never the rendered source image.
+        queueArchivePut(url, raw.blob);
+      }
+      state.layerCache.set(url, layer);
+      return layer;
+    })();
+    state.inflight.set(url, pending);
+    try {
+      return await pending;
+    } finally {
+      state.inflight.delete(url);
+    }
+  }
+
+  function layerFor(url, force) {
+    if (!GRID_SOURCE_PATTERN.test(url)) return Promise.reject(new Error("Only local MRG1 data grids are supported."));
+    return gridLayerFor(url, force);
+  }
+
+  function prefetchNeighbours() {
+    for (const index of [state.index - 1, state.index + 1, state.index + 2]) {
+      if (index >= 0 && index < state.frames.length) layerFor(state.frames[index], false).catch(() => {});
+    }
+  }
+
+  function mapProject(width, height) {
+    const yTop = merc(EXTENT.north);
+    const ySpan = yTop - merc(EXTENT.south);
+    return {
+      X: (lon) => (lon - EXTENT.west) / (EXTENT.east - EXTENT.west) * width,
+      Y: (lat) => (yTop - merc(lat)) / ySpan * height
+    };
+  }
+
+  function maltaLand() {
+    return window.PANEL_GEO && window.PANEL_GEO.domains && window.PANEL_GEO.domains.malta &&
+      window.PANEL_GEO.domains.malta.land || [];
+  }
+
+  function traceLand(context, X, Y) {
+    for (const ring of maltaLand()) {
+      ring.forEach((point, index) => {
+        if (index) context.lineTo(X(point[0]), Y(point[1]));
+        else context.moveTo(X(point[0]), Y(point[1]));
+      });
+      context.closePath();
+    }
+  }
+
+  function drawBase(context, width, height) {
+    // Deliberately a quiet map surface: no satellite cloud raster beneath
+    // observed rain, so the two phenomena cannot be visually confused.
+    const wash = context.createLinearGradient(0, 0, width, height);
+    wash.addColorStop(0, "#263b49");
+    wash.addColorStop(.52, "#1c2d39");
+    wash.addColorStop(1, "#14232e");
+    context.fillStyle = wash;
+    context.fillRect(0, 0, width, height);
+    const projected = mapProject(width, height);
+    context.beginPath();
+    traceLand(context, projected.X, projected.Y);
+    context.fillStyle = "rgba(132, 158, 172, .22)";
+    context.fill();
+  }
+
+  function paintLayer(context, layer, alpha, width, height) {
+    if (!layer || alpha <= 0) return;
+    context.save();
+    context.globalAlpha = alpha * state.opacity * .92;
+    context.imageSmoothingEnabled = true;
+    context.imageSmoothingQuality = "high";
+    context.drawImage(layer, 0, 0, width, height);
+    context.restore();
+  }
+
+  function drawLightning(context, width, height) {
+    if (!state.lightningEnabled) return;
+    const frame = frameTime(state.frames[state.index] || "");
+    if (!frame) return;
+    const end = frame.getTime();
+    const projected = mapProject(width, height);
+    for (const point of lightningForMap()) {
+      const x = projected.X(point.lon), y = projected.Y(point.lat);
+      if (x < -12 || x > width + 12 || y < -12 || y > height + 12) continue;
+      const age = Math.max(0, Math.min(1, (end - point.observedAt) / LIGHTNING_FRAME_WINDOW_MS));
+      if (point.markerKind === "satellite_activity_area") {
+        // The public AFA coverage supplies cloud-top activity regions, not
+        // individual strikes. A warm outlined ring deliberately looks unlike
+        // the bolt used for a future licensed point-observation feed.
+        const radius = 4.6 + Math.min(4.2, Math.log10((point.areaCells || 1) + 1) * 1.65);
+        const colour = "#ffe16a";
+        context.save();
+        context.globalAlpha = .94 - age * .5;
+        context.shadowColor = colour;
+        context.shadowBlur = 9;
+        context.fillStyle = "rgba(255, 188, 43, .25)";
+        context.strokeStyle = colour;
+        context.lineWidth = 1.5;
+        context.beginPath();
+        context.arc(x, y, radius, 0, Math.PI * 2);
+        context.fill();
+        context.stroke();
+        context.shadowBlur = 0;
+        context.fillStyle = "#fff6c5";
+        context.beginPath();
+        context.arc(x, y, 1.65, 0, Math.PI * 2);
+        context.fill();
+        context.restore();
+        continue;
+      }
+      const colour = point.type === "ic" ? "#b9a6ff" : point.type === "cg" ? "#ffe65a" : "#ffd15a";
+      context.save();
+      context.globalAlpha = .95 - age * .55;
+      context.shadowColor = colour;
+      context.shadowBlur = 7;
+      context.fillStyle = colour;
+      context.beginPath();
+      context.arc(x, y, point.type === "ic" ? 3.1 : 3.8, 0, Math.PI * 2);
+      context.fill();
+      context.shadowBlur = 0;
+      context.fillStyle = "rgba(18, 24, 31, .9)";
+      context.beginPath();
+      context.moveTo(x + 1.1, y - 7.2);
+      context.lineTo(x - 3.0, y + .3);
+      context.lineTo(x + .2, y + .3);
+      context.lineTo(x - 1.2, y + 7.0);
+      context.lineTo(x + 4.0, y - 1.1);
+      context.lineTo(x + .9, y - 1.1);
+      context.closePath();
+      context.fill();
+      context.restore();
+    }
+  }
+
+  function drawCarto(context, width, height) {
+    const projected = mapProject(width, height);
+    const X = projected.X, Y = projected.Y;
+
+    context.save();
+    context.setLineDash([3, 4]);
+    context.strokeStyle = "rgba(197, 215, 225, .18)";
+    context.lineWidth = .7;
+    context.beginPath();
+    for (let lon = Math.ceil(EXTENT.west / .5) * .5; lon <= EXTENT.east; lon += .5) {
+      context.moveTo(X(lon), 0);
+      context.lineTo(X(lon), height);
+    }
+    for (let lat = Math.ceil(EXTENT.south / .5) * .5; lat <= EXTENT.north; lat += .5) {
+      context.moveTo(0, Y(lat));
+      context.lineTo(width, Y(lat));
+    }
+    context.stroke();
+    context.restore();
+
+    context.beginPath();
+    traceLand(context, X, Y);
+    context.strokeStyle = "rgba(255, 255, 255, .85)";
+    context.lineWidth = 1.2;
+    context.lineJoin = "round";
+    context.stroke();
+  }
+
+  function drawRadarLocation(context, width, height) {
+    const projected = mapProject(width, height);
+    const x = projected.X(RADAR_CENTER.lon);
+    const y = projected.Y(RADAR_CENTER.lat);
+    // A quiet, non-data marker: the calibrated Luqa / Malta Airport radar
+    // position, not a radar return and not part of the intensity scale.
+    context.save();
+    context.lineCap = "round";
+    context.strokeStyle = "rgba(6, 14, 19, .8)";
+    context.lineWidth = 3.6;
+    context.beginPath();
+    context.moveTo(x - 5, y - 5); context.lineTo(x + 5, y + 5);
+    context.moveTo(x + 5, y - 5); context.lineTo(x - 5, y + 5);
+    context.stroke();
+    context.strokeStyle = "rgba(232, 241, 245, .94)";
+    context.lineWidth = 1.15;
+    context.beginPath();
+    context.moveTo(x - 5, y - 5); context.lineTo(x + 5, y + 5);
+    context.moveTo(x + 5, y - 5); context.lineTo(x - 5, y + 5);
+    context.stroke();
+    context.restore();
+  }
+
+  function draw() {
+    const canvas = $("radar-canvas");
+    if (!state.cssWidth || !state.cssHeight) return;
+    const context = canvas.getContext("2d");
+    context.setTransform(state.dpr, 0, 0, state.dpr, 0, 0);
+    context.clearRect(0, 0, state.cssWidth, state.cssHeight);
+    drawBase(context, state.cssWidth, state.cssHeight);
+    paintLayer(context, state.currentLayer, 1, state.cssWidth, state.cssHeight);
+    drawLightning(context, state.cssWidth, state.cssHeight);
+    drawCarto(context, state.cssWidth, state.cssHeight);
+    drawRadarLocation(context, state.cssWidth, state.cssHeight);
+  }
+
+  function resize() {
+    const stage = $("stage"), canvas = $("radar-canvas");
+    const rect = stage.getBoundingClientRect();
+    const width = Math.max(1, Math.round(rect.width));
+    const height = Math.max(1, Math.round(rect.height));
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    if (width === state.cssWidth && height === state.cssHeight && dpr === state.dpr) return;
+    state.cssWidth = width;
+    state.cssHeight = height;
+    state.dpr = dpr;
+    canvas.width = Math.round(width * dpr);
+    canvas.height = Math.round(height * dpr);
+    draw();
+  }
+
+  async function setIndex(index, options) {
+    const settings = options || {};
+    const next = Math.max(0, Math.min(state.frames.length - 1, Math.round(index)));
+    const url = state.frames[next];
+    if (!url) return false;
+    const token = ++state.token;
+    state.index = next;
+    syncControls();
+    $("stage").classList.add("loading");
+    setStatus(state.preferArchive ? "Rendering saved local data grid…" : state.piSource ? "Rendering published radar data grid…" : "Extracting official echoes…");
+    try {
+      const layer = await layerFor(url, !!settings.force);
+      if (token !== state.token) return false;
+      state.currentLayer = layer;
+      syncReadout();
+      $("stage").classList.remove("loading");
+      setStatus("Echo layer ready");
+      draw();
+      prefetchNeighbours();
+      return true;
+    } catch (error) {
+      if (token !== state.token) return false;
+      $("stage").classList.remove("loading");
+      const detail = error && error.message ? error.message : "Could not load this retained grid.";
+      setStatus(detail, true);
+      return false;
+    }
+  }
+
+  function stop() {
+    state.playing = false;
+    clearTimeout(state.timer);
+    state.timer = null;
+    $("play").textContent = "Play";
+    $("play").setAttribute("aria-pressed", "false");
+  }
+
+  function schedule() {
+    if (!state.playing) return;
+    state.timer = setTimeout(async () => {
+      const next = state.index >= state.frames.length - 1 ? 0 : state.index + 1;
+      await setIndex(next);
+      schedule();
+    }, Math.round(900 / state.speed));
+  }
+
+  function play() {
+    if (state.playing) return stop();
+    state.playing = true;
+    $("play").textContent = "Pause";
+    $("play").setAttribute("aria-pressed", "true");
+    schedule();
+  }
+
+  function loadFrames(frames, message, options) {
+    const settings = options || {};
+    const normalized = normalize(frames);
+    if (!normalized.length) throw new Error("No valid local MRG1 radar-grid URLs were found.");
+    stop();
+    state.preferArchive = !!settings.preferArchive;
+    state.piSource = !!settings.piSource;
+    if (!state.piSource) state.piManifestSignature = "";
+    state.displayUrls = settings.displayUrls instanceof Map ? new Map(settings.displayUrls) : new Map();
+    state.displayCache.clear();
+    state.displayInflight.clear();
+    state.frames = normalized;
+    state.index = normalized.length - 1;
+    state.currentLayer = null;
+    state.layerCache.clear();
+    $("scrub").max = String(normalized.length - 1);
+    $("frame-input").value = JSON.stringify(normalized, null, 2);
+    setIndex(state.index, { force: true });
+    if (message) $("import-message").textContent = message;
+  }
+
+  async function saveCurrentLoop() {
+    const button = $("save-loop");
+    const total = state.frames.length;
+    if (!total) return;
+    try {
+      await archiveCount();
+    } catch (error) {
+      setStatus("Local archive is unavailable", true);
+      $("import-message").textContent = error.message || "This browser cannot save the local archive.";
+      return;
+    }
+    button.disabled = true;
+    stop();
+    try {
+      if (navigator.storage && navigator.storage.persist) await navigator.storage.persist();
+      let saved = 0, unavailable = 0;
+      for (let index = 0; index < total; index++) {
+        setStatus("Saving local frame " + (index + 1) + " of " + total + "…");
+        try {
+          const url = state.frames[index];
+          await layerFor(url, true);
+          const write = state.archiveWrites.get(url);
+          if (write) await write;
+          if (!await archiveGet(url)) throw new Error("Frame was not retained locally.");
+          saved++;
+        } catch (_) {
+          unavailable++;
+        }
+      }
+      const count = await archiveCount();
+      await updateArchiveButton();
+      const suffix = unavailable ? " · " + unavailable + " unavailable" : "";
+      setStatus(count + " scans saved locally");
+      $("import-message").textContent = "Saved " + saved + " supplied scans in this browser's local archive" + suffix + ".";
+    } catch (error) {
+      setStatus("Local save stopped", true);
+      $("import-message").textContent = error.message || "The local archive could not be completed.";
+    } finally {
+      button.disabled = false;
+    }
+  }
+
+  async function useSavedArchive() {
+    try {
+      const urls = await archiveUrls();
+      if (!urls.length) return;
+      loadFrames(urls,
+        "Using " + urls.length + " locally saved data grids; no remote request is needed.",
+        { preferArchive: true });
+    } catch (error) {
+      setStatus("Local archive is unavailable", true);
+      $("import-message").textContent = error.message || "The saved archive could not be opened.";
+    }
+  }
+
+  async function loadPiFrames(manual) {
+    if (state.piManifestPromise) return state.piManifestPromise;
+    const task = (async () => {
+      const button = $("refresh-live");
+      button.disabled = true;
+      if (manual || !state.currentLayer) setStatus("Loading published radar scans…");
+      try {
+        const response = await fetch("data/frames.json", { cache: "no-store" });
+        if (!response.ok) throw new Error("Published radar archive has not been created yet.");
+        const manifest = await response.json();
+        const manifestFrames = Array.isArray(manifest.frames) ? manifest.frames : [];
+        const frames = normalize(manifestFrames);
+        if (!frames.length) throw new Error("The published radar archive does not contain a radar scan yet.");
+        const displayUrls = new Map();
+        manifestFrames.forEach((frame) => {
+          if (frame && GRID_SOURCE_PATTERN.test(frame.data_url) && DISPLAY_SOURCE_PATTERN.test(frame.display_url)) {
+            displayUrls.set(frame.data_url, frame.display_url);
+          }
+        });
+        const signature = frames.map((url) => url + "|" + (displayUrls.get(url) || "")).join("\n");
+        if (signature === state.piManifestSignature) {
+          if (state.piSource) syncReadout();
+          if (manual) $("import-message").textContent = "The published radar archive is already current.";
+          return true;
+        }
+        const checkedAt = manifest.updated_at && new Date(manifest.updated_at);
+        const updated = checkedAt && !Number.isNaN(checkedAt.getTime()) ? " · collector checked " + formatLocalDateTime(checkedAt) : "";
+        loadFrames(
+          frames,
+          "Loaded " + frames.length + " locally retained radar data grids" + updated + ".",
+          { piSource: true, displayUrls: displayUrls }
+        );
+        state.piManifestSignature = signature;
+        return true;
+      } catch (error) {
+        if (manual) {
+          setStatus("Published radar archive is not ready", true);
+          $("import-message").textContent = error.message || "Could not read the published radar archive.";
+        }
+        return false;
+      } finally {
+        button.disabled = false;
+      }
+    })();
+    state.piManifestPromise = task;
+    try {
+      return await task;
+    } finally {
+      state.piManifestPromise = null;
+    }
+  }
+
+  function schedulePiManifestRefresh() {
+    clearTimeout(state.piManifestTimer);
+    state.piManifestTimer = setTimeout(async () => {
+      if (document.visibilityState === "visible" && state.piSource) await loadPiFrames(false);
+      schedulePiManifestRefresh();
+    }, PI_MANIFEST_REFRESH_MS);
+  }
+
+  $("first").addEventListener("click", () => { stop(); setIndex(0); });
+  $("prev").addEventListener("click", () => { stop(); setIndex(state.index - 1); });
+  $("next").addEventListener("click", () => { stop(); setIndex(state.index + 1); });
+  $("last").addEventListener("click", () => { stop(); setIndex(state.frames.length - 1); });
+  $("play").addEventListener("click", play);
+  $("cleanup").addEventListener("click", () => {
+    state.cleanDisplay = !state.cleanDisplay;
+    try { localStorage.setItem("official-radar-local-clean-display", String(state.cleanDisplay)); } catch (_) {}
+    state.layerCache.clear();
+    stop();
+    setIndex(state.index);
+  });
+  $("lightning").addEventListener("click", () => {
+    state.lightningEnabled = !state.lightningEnabled;
+    try { localStorage.setItem("official-radar-local-lightning", String(state.lightningEnabled)); } catch (_) {}
+    syncLightningMode();
+    draw();
+  });
+  $("reload").addEventListener("click", () => setIndex(state.index, { force: true }));
+  $("refresh-live").addEventListener("click", () => loadPiFrames(true));
+  $("save-loop").addEventListener("click", saveCurrentLoop);
+  $("use-archive").addEventListener("click", useSavedArchive);
+  $("scrub").addEventListener("input", (event) => { stop(); setIndex(+event.target.value); });
+  $("opacity").addEventListener("input", (event) => {
+    state.opacity = +event.target.value / 100;
+    $("opacity-value").textContent = event.target.value + "%";
+    draw();
+  });
+  $("speeds").addEventListener("click", (event) => {
+    const button = event.target.closest("button[data-speed]");
+    if (!button) return;
+    state.speed = +button.dataset.speed;
+    Array.from($("speeds").querySelectorAll("button")).forEach((candidate) =>
+      candidate.setAttribute("aria-pressed", String(candidate === button)));
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.target.matches("textarea, input")) return;
+    if (event.key === "ArrowLeft") { stop(); setIndex(state.index - 1); }
+    if (event.key === "ArrowRight") { stop(); setIndex(state.index + 1); }
+    if (event.key === " ") { event.preventDefault(); play(); }
+  });
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") {
+      if (state.piSource) loadPiFrames(false);
+      loadLightning();
+    }
+  });
+  $("theme").addEventListener("click", () => {
+    const root = document.documentElement;
+    root.dataset.theme = root.dataset.theme === "light" ? "" : "light";
+    try { localStorage.setItem("official-radar-local-theme", root.dataset.theme || "dark"); } catch (_) {}
+  });
+  $("load-frames").addEventListener("click", () => {
+    try {
+      const parsed = JSON.parse($("frame-input").value);
+      loadFrames(parsed, "Saved only in this browser.");
+      localStorage.setItem("official-radar-local-frames", JSON.stringify(parsed));
+    } catch (error) {
+      $("import-message").textContent = error.message || "That frame list could not be read.";
+    }
+  });
+  $("restore-sample").addEventListener("click", () => {
+    loadFrames(DEFAULT_FRAMES, "Restored the retained local fallback frames.");
+    localStorage.removeItem("official-radar-local-frames");
+  });
+  $("clear-local").addEventListener("click", () => {
+    localStorage.removeItem("official-radar-local-frames");
+    $("import-message").textContent = "Saved browser list removed. The retained Pi loop remains on screen.";
+  });
+
+  new ResizeObserver(resize).observe($("stage"));
+  window.addEventListener("resize", resize);
+  (async () => {
+    let saved = null;
+    try {
+      if (localStorage.getItem("official-radar-local-theme") === "light") document.documentElement.dataset.theme = "light";
+      if (localStorage.getItem("official-radar-local-clean-display") === "false") state.cleanDisplay = false;
+      if (localStorage.getItem("official-radar-local-lightning") === "false") state.lightningEnabled = false;
+      saved = JSON.parse(localStorage.getItem("official-radar-local-frames") || "null");
+    } catch (_) {}
+    syncDisplayMode();
+    syncLightningMode();
+    if (!await loadPiFrames(false)) {
+      // v2 stored source-PNG URLs in this key. They are deliberately no
+      // longer supported, so an old browser value must not stop startup.
+      const usableSaved = normalize(saved);
+      if (saved && !usableSaved.length) {
+        try { localStorage.removeItem("official-radar-local-frames"); } catch (_) {}
+        $("import-message").textContent = "Removed an outdated browser PNG list; using the local data-grid fallback.";
+      }
+      loadFrames(usableSaved.length ? usableSaved : DEFAULT_FRAMES);
+    }
+    updateArchiveButton();
+    await loadLightning();
+    resize();
+    schedulePiManifestRefresh();
+    scheduleLightningRefresh();
+  })();
+</script>
+</body>
+</html>
